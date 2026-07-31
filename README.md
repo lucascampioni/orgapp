@@ -25,3 +25,5 @@ npm run dev
 ### Deploy
 
 Pronto para deploy na [Vercel](https://vercel.com/new): configure as duas variáveis de ambiente acima nas configurações do projeto.
+
+Garanta que o **Framework Preset** do projeto na Vercel esteja definido como **Next.js** (e sem um "Output Directory" manual apontando para `public`) — o preset errado faz a build falhar com "No Output Directory named 'public' found".
