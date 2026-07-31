@@ -14,6 +14,7 @@ export interface Task {
   id: string;
   categoria: Categoria;
   texto: string;
+  detalhes: string | null;
   status: Status;
   criado_em: string;
 }

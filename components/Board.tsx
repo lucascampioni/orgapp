@@ -19,6 +19,7 @@ export default function Board({
   const [newTxt, setNewTxt] = useState("");
   const [dragOverStatus, setDragOverStatus] = useState<Status | null>(null);
   const [saving, setSaving] = useState(false);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -71,6 +72,25 @@ export default function Board({
       setTasks(prevTasks);
     }
   }
+
+  async function saveDetalhes(id: string, detalhes: string) {
+    const prevTasks = tasks;
+    const value = detalhes.trim() || null;
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, detalhes: value } : t)),
+    );
+
+    const { error } = await supabase
+      .from("tasks")
+      .update({ detalhes: value })
+      .eq("id", id);
+    if (error) {
+      console.error("Falha ao salvar detalhes", error);
+      setTasks(prevTasks);
+    }
+  }
+
+  const openTask = tasks.find((t) => t.id === openTaskId) ?? null;
 
   return (
     <div className="mx-auto max-w-[1400px] px-6 py-7">
@@ -150,9 +170,18 @@ export default function Board({
               moveCard(id, s.key);
             }}
             onRemove={removeCard}
+            onOpen={setOpenTaskId}
           />
         ))}
       </div>
+
+      {openTask && (
+        <TaskDetailsModal
+          task={openTask}
+          onClose={() => setOpenTaskId(null)}
+          onSave={saveDetalhes}
+        />
+      )}
     </div>
   );
 }
@@ -199,6 +228,7 @@ function Column({
   onDragLeave,
   onDrop,
   onRemove,
+  onOpen,
 }: {
   label: string;
   tasks: Task[];
@@ -207,6 +237,7 @@ function Column({
   onDragLeave: () => void;
   onDrop: (id: string) => void;
   onRemove: (id: string) => void;
+  onOpen: (id: string) => void;
 }) {
   return (
     <div
@@ -240,7 +271,12 @@ function Column({
           <div className="py-4 text-center text-xs text-[#8C94A0]">—</div>
         )}
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} onRemove={onRemove} />
+          <TaskCard
+            key={task.id}
+            task={task}
+            onRemove={onRemove}
+            onOpen={onOpen}
+          />
         ))}
       </div>
     </div>
@@ -250,9 +286,11 @@ function Column({
 function TaskCard({
   task,
   onRemove,
+  onOpen,
 }: {
   task: Task;
   onRemove: (id: string) => void;
+  onOpen: (id: string) => void;
 }) {
   const meta = CATEGORIAS[task.categoria];
 
@@ -263,11 +301,15 @@ function TaskCard({
         e.dataTransfer.setData("text/plain", task.id);
         e.dataTransfer.effectAllowed = "move";
       }}
+      onClick={() => onOpen(task.id)}
       className="group relative cursor-grab rounded-lg border border-[#343A44] bg-[#2A2F37] p-2.5 text-[13.5px] leading-snug text-[#E9ECEF] active:cursor-grabbing"
       style={{ borderLeft: `3px solid ${meta.color}` }}
     >
       <button
-        onClick={() => onRemove(task.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(task.id);
+        }}
         title="Remover"
         className="absolute right-1.5 top-1.5 text-[#8C94A0] opacity-0 transition hover:text-[#FF6B6B] group-hover:opacity-100"
       >
@@ -280,6 +322,91 @@ function TaskCard({
         {meta.label}
       </span>
       <div>{task.texto}</div>
+      {task.detalhes && (
+        <div className="mt-1.5 flex items-center gap-1 text-[11px] text-[#8C94A0]">
+          <span>📝</span>
+          <span>Tem detalhes</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskDetailsModal({
+  task,
+  onClose,
+  onSave,
+}: {
+  task: Task;
+  onClose: () => void;
+  onSave: (id: string, detalhes: string) => Promise<void>;
+}) {
+  const meta = CATEGORIAS[task.categoria];
+  const [detalhes, setDetalhes] = useState(task.detalhes ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    await onSave(task.id, detalhes);
+    setSaving(false);
+    onClose();
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-xl border border-[#343A44] bg-[#22262D] p-5"
+      >
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <span
+              className="mb-1.5 inline-block rounded px-1.5 py-0.5 text-[10.5px] font-bold tracking-wide text-[#0E1116]"
+              style={{ background: meta.color }}
+            >
+              {meta.label}
+            </span>
+            <div className="text-[14px] text-[#E9ECEF]">{task.texto}</div>
+          </div>
+          <button
+            onClick={onClose}
+            title="Fechar"
+            className="text-[#8C94A0] hover:text-[#E9ECEF]"
+          >
+            ✕
+          </button>
+        </div>
+
+        <label className="mb-1 block text-xs font-medium text-[#8C94A0]">
+          Detalhes
+        </label>
+        <textarea
+          value={detalhes}
+          onChange={(e) => setDetalhes(e.target.value)}
+          rows={6}
+          placeholder="Anotações, contexto, links..."
+          className="mb-4 w-full resize-none rounded-lg border border-[#343A44] bg-[#2A2F37] px-3 py-2 text-sm text-[#E9ECEF] outline-none focus:border-[#5C9EFF]"
+        />
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-[#343A44] px-3 py-1.5 text-[13px] text-[#8C94A0] transition hover:text-[#E9ECEF]"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg border border-[#5C9EFF] bg-[#5C9EFF] px-3 py-1.5 text-[13px] font-semibold text-[#0E1116] transition hover:brightness-110 disabled:opacity-60"
+          >
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

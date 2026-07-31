@@ -9,11 +9,15 @@ create table if not exists public.tasks (
     categoria in ('podbd3', 'bizops', 'toyota', 'abc', 'bv', 'inter', 'protege', 'quero')
   ),
   texto text not null,
+  detalhes text,
   status text not null default 'afazer' check (
     status in ('afazer', 'fazendo', 'bloqueado', 'feito')
   ),
   criado_em timestamptz not null default now()
 );
+
+-- Migracao segura para bancos que ja tinham a tabela sem esta coluna.
+alter table public.tasks add column if not exists detalhes text;
 
 alter table public.tasks enable row level security;
 
