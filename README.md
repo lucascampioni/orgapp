@@ -24,6 +24,7 @@ npm run dev
 
 ### Deploy
 
-Pronto para deploy na [Vercel](https://vercel.com/new): configure as duas variáveis de ambiente acima nas configurações do projeto.
+Pronto para deploy na [Vercel](https://vercel.com/new). Checklist:
 
-Garanta que o **Framework Preset** do projeto na Vercel esteja definido como **Next.js** (e sem um "Output Directory" manual apontando para `public`) — o preset errado faz a build falhar com "No Output Directory named 'public' found".
+1. **Environment Variables**: adicione `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` em Settings → Environment Variables, para os ambientes Production e Preview. Sem isso o app retorna 500 em qualquer rota (o `proxy.ts` roda em toda requisição e precisa dessas variáveis).
+2. **Framework Preset**: em Settings → Build and Deployment, garanta que está como **Next.js** (e sem "Output Directory" manual apontando para `public`) — o preset errado faz a build falhar com "No Output Directory named 'public' found".
