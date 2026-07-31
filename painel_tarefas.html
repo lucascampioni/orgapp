@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Painel de Tarefas</title>
+<style>
+  :root{
+    --bg:#181B20;
+    --surface:#22262D;
+    --surface-2:#2A2F37;
+    --border:#343A44;
+    --text:#E9ECEF;
+    --muted:#8C94A0;
+    --accent:#5C9EFF;
+
+    --c-podbd3:#4C6EF5;
+    --c-bizops:#9775FA;
+    --c-toyota:#E8590C;
+    --c-abc:#12B886;
+    --c-bv:#F59F00;
+    --c-inter:#E64980;
+    --c-protege:#40C057;
+    --c-quero:#FCC419;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:1400px;margin:0 auto;padding:28px 24px 60px;}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:6px;}
+  h1{font-size:22px;font-weight:700;margin:0;letter-spacing:-0.01em;}
+  .sub{color:var(--muted);font-size:13px;}
+
+  .toolbar{
+    display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+    margin:20px 0 22px;
+  }
+  .chip{
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--muted);
+    padding:6px 12px;
+    border-radius:20px;
+    font-size:12.5px;
+    cursor:pointer;
+    user-select:none;
+    display:flex;align-items:center;gap:6px;
+    transition:.15s;
+  }
+  .chip:hover{border-color:var(--accent);color:var(--text);}
+  .chip.active{background:var(--surface-2);color:var(--text);border-color:var(--accent);}
+  .chip .dot{width:8px;height:8px;border-radius:50%;flex:none;}
+  .chip .count{color:var(--muted);font-size:11px;}
+
+  .add-row{
+    display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;
+  }
+  select, input[type=text], button.primary{
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:8px;
+    padding:8px 10px;
+    font-size:13px;
+  }
+  input[type=text]{min-width:220px;}
+  button.primary{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#0E1116;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.primary:hover{filter:brightness(1.08);}
+
+  .board{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:16px;
+  }
+  @media (max-width:900px){
+    .board{grid-template-columns:1fr 1fr;}
+  }
+  @media (max-width:560px){
+    .board{grid-template-columns:1fr;}
+  }
+
+  .col{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px;
+    min-height:200px;
+    display:flex;flex-direction:column;
+  }
+  .col-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:4px 4px 12px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:10px;
+  }
+  .col-head h2{font-size:13px;margin:0;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;}
+  .col-head .n{font-size:12px;color:var(--muted);background:var(--surface-2);padding:1px 8px;border-radius:10px;}
+
+  .cards{display:flex;flex-direction:column;gap:8px;min-height:40px;flex:1;}
+  .col.dragover{outline:2px dashed var(--accent);outline-offset:-4px;border-radius:10px;}
+
+  .card{
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-left:3px solid var(--accent);
+    border-radius:8px;
+    padding:9px 10px;
+    font-size:13.5px;
+    line-height:1.4;
+    cursor:grab;
+    position:relative;
+  }
+  .card:active{cursor:grabbing;}
+  .card .tag{
+    display:inline-block;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:.02em;
+    padding:1px 7px;
+    border-radius:5px;
+    margin-bottom:6px;
+    color:#0E1116;
+  }
+  .card .txt{color:var(--text);}
+  .card .del{
+    position:absolute;top:6px;right:7px;
+    color:var(--muted);
+    background:none;border:none;
+    cursor:pointer;font-size:14px;line-height:1;
+    opacity:0;transition:.15s;
+  }
+  .card:hover .del{opacity:1;}
+  .card .del:hover{color:#FF6B6B;}
+
+  .empty-hint{color:var(--muted);font-size:12px;text-align:center;padding:16px 4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Painel de Tarefas</h1>
+      <div class="sub">Reorganizado a partir das notas de 30/07 · arraste os cards entre as colunas</div>
+    </div>
+  </header>
+
+  <div class="toolbar" id="filterRow"></div>
+
+  <div class="add-row" style="margin-bottom:18px;">
+    <select id="newCat"></select>
+    <input type="text" id="newTxt" placeholder="Nova tarefa...">
+    <button class="primary" onclick="addCard()">Adicionar</button>
+  </div>
+
+  <div class="board" id="board">
+    <div class="col" data-status="afazer">
+      <div class="col-head"><h2>A Fazer</h2><span class="n" id="n-afazer">0</span></div>
+      <div class="cards" id="cards-afazer"></div>
+    </div>
+    <div class="col" data-status="fazendo">
+      <div class="col-head"><h2>Fazendo</h2><span class="n" id="n-fazendo">0</span></div>
+      <div class="cards" id="cards-fazendo"></div>
+    </div>
+    <div class="col" data-status="bloqueado">
+      <div class="col-head"><h2>Bloqueado</h2><span class="n" id="n-bloqueado">0</span></div>
+      <div class="cards" id="cards-bloqueado"></div>
+    </div>
+    <div class="col" data-status="feito">
+      <div class="col-head"><h2>Feito</h2><span class="n" id="n-feito">0</span></div>
+      <div class="cards" id="cards-feito"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CATS = {
+  podbd3:  {label:'PODBD3',     color:'var(--c-podbd3)'},
+  bizops:  {label:'BizOps',     color:'var(--c-bizops)'},
+  toyota:  {label:'Toyota',     color:'var(--c-toyota)'},
+  abc:     {label:'Banco ABC',  color:'var(--c-abc)'},
+  bv:      {label:'Banco BV',   color:'var(--c-bv)'},
+  inter:   {label:'Interplayers', color:'var(--c-inter)'},
+  protege: {label:'Protege',    color:'var(--c-protege)'},
+  quero:   {label:'Quero',      color:'var(--c-quero)'},
+};
+
+const SEED = [
+  {cat:'podbd3', status:'feito',  txt:'Atualizar planilha de plantão'},
+  {cat:'bizops', status:'afazer', txt:'Atualizar P.A. que montamos com Hércules'},
+  {cat:'quero',  status:'afazer', txt:'Book Quero Educação'},
+  {cat:'bizops', status:'afazer', txt:'Estruturar programa de Acelera na Q3'},
+  {cat:'bizops', status:'afazer', txt:'Diretrizes para casos envolvendo parcerias'},
+  {cat:'bv',     status:'afazer', txt:'Banco BV — o que vamos fazer com Sybase e Datastage'},
+  {cat:'bizops', status:'afazer', txt:'Auditoria com os líderes'},
+  {cat:'inter',  status:'afazer', txt:'Acompanhar e envolver time de engenharia Interplayers'},
+  {cat:'abc',    status:'afazer', txt:'Projeto Banco ABC — novo status'},
+  {cat:'toyota', status:'afazer', txt:'Book Toyota — renovações, reconhecidos, entregas, melhorias, req, GMUD'},
+  {cat:'bizops', status:'afazer', txt:'Acompanhar ajuste Teams Tália'},
+  {cat:'protege',status:'afazer', txt:'Ver status Protege Cash'},
+  {cat:'bizops', status:'afazer', txt:'Processo Zeev — delivery — suporte (checklist)'},
+  {cat:'bizops', status:'afazer', txt:'Estruturação Movidesk pra subir no Lake'},
+  {cat:'bizops', status:'afazer', txt:'Diretório de suporte — finalizar e responder Henrique'},
+  {cat:'podbd3', status:'afazer', txt:'Responder e-mail LevelUp'},
+  {cat:'toyota', status:'afazer', txt:'Tuning processo da diária'},
+  {cat:'podbd3', status:'afazer', txt:'Decidir como vou fazer com Matheus e Erick'},
+  {cat:'podbd3', status:'afazer', txt:'Responder e-mail Minebox'},
+  {cat:'toyota', status:'feito',  txt:'Enviar horas Toyota para Alexandre'},
+
+  {cat:'bizops', status:'afazer', txt:'Wiki Hércules'},
+  {cat:'abc',    status:'feito',  txt:'Cobrar sobre acessos do Banco ABC'},
+  {cat:'podbd3', status:'feito',  txt:'Cobrar NPS clientes'},
+  {cat:'bizops', status:'afazer', txt:'Falar com o Matheus sobre lançamento de horas M2'},
+  {cat:'bizops', status:'afazer', txt:'Rodinei e Matheus gravarem vídeos para trilha'},
+  {cat:'bizops', status:'afazer', txt:'Migrar hub para Vercel'},
+  {cat:'podbd3', status:'afazer', txt:'Falar com Joyci e Darley sobre plantão'},
+  {cat:'bizops', status:'afazer', txt:'Lançamento de horas terapia'},
+  {cat:'bizops', status:'afazer', txt:'Filtro para desvio na gestão de horas'},
+  {cat:'bizops', status:'afazer', txt:'Filtros e permissões na aba de pessoas'},
+  {cat:'bizops', status:'afazer', txt:'Permissões gerais do hub'},
+  {cat:'abc',    status:'afazer', txt:'Responder Robson e passar sobre as horas'},
+  {cat:'toyota', status:'afazer', txt:'Responder Rafael — e-mail monitoramento'},
+  {cat:'abc',    status:'afazer', txt:'Reunir com Rodrigo para montar plano ABC'},
+  {cat:'bizops', status:'afazer', txt:'Levantar automações com IA e subir para o Lucan'},
+  {cat:'toyota', status:'afazer', txt:'Tirar número das reqs na planilha da Toyota e enviar'},
+  {cat:'abc',    status:'feito',  txt:'Atualizar card ABC'},
+  {cat:'bizops', status:'afazer', txt:'Definir como vai ser a NC'},
+  {cat:'bizops', status:'afazer', txt:'Revisar docs no Hub sobre processos'},
+  {cat:'bizops', status:'afazer', txt:'DSF — organizar processos e estrutura'},
+
+  {cat:'bizops', status:'afazer', txt:'Suporte Hub — dar um passo p/ trás e organizar'},
+  {cat:'bizops', status:'afazer', txt:'Processos de auditoria de lançamento de horas etc'},
+  {cat:'bizops', status:'afazer', txt:'Portal do cliente é o foco do hub'},
+  {cat:'bizops', status:'afazer', txt:'Ver com Luis sobre processos da Gordon'},
+];
+
+const STORAGE_KEY = 'board_v1';
+let cards = [];
+let activeFilter = 'all';
+
+function uid(){ return 'c'+Math.random().toString(36).slice(2,10); }
+
+async function loadCards(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    if(res && res.value){
+      cards = JSON.parse(res.value);
+      return;
+    }
+  }catch(e){ /* key doesn't exist yet */ }
+  cards = SEED.map(c => ({...c, id: uid()}));
+  await saveCards();
+}
+
+async function saveCards(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(cards), false);
+  }catch(e){ console.error('Falha ao salvar', e); }
+}
+
+function buildFilterRow(){
+  const row = document.getElementById('filterRow');
+  const all = document.createElement('div');
+  all.className = 'chip active';
+  all.dataset.cat = 'all';
+  all.innerHTML = `<span>Tudo</span><span class="count">${cards.length}</span>`;
+  all.onclick = () => setFilter('all');
+  row.appendChild(all);
+
+  Object.entries(CATS).forEach(([key, meta]) => {
+    const n = cards.filter(c => c.cat === key).length;
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.dataset.cat = key;
+    chip.innerHTML = `<span class="dot" style="background:${meta.color}"></span><span>${meta.label}</span><span class="count">${n}</span>`;
+    chip.onclick = () => setFilter(key);
+    row.appendChild(chip);
+  });
+
+  const sel = document.getElementById('newCat');
+  Object.entries(CATS).forEach(([key, meta]) => {
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = meta.label;
+    sel.appendChild(opt);
+  });
+}
+
+function setFilter(cat){
+  activeFilter = cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+  render();
+}
+
+function render(){
+  const statuses = ['afazer','fazendo','bloqueado','feito'];
+  statuses.forEach(s => {
+    const container = document.getElementById('cards-'+s);
+    container.innerHTML = '';
+    const list = cards.filter(c => c.status === s && (activeFilter === 'all' || c.cat === activeFilter));
+    document.getElementById('n-'+s).textContent = list.length;
+    if(list.length === 0){
+      const hint = document.createElement('div');
+      hint.className = 'empty-hint';
+      hint.textContent = '—';
+      container.appendChild(hint);
+    }
+    list.forEach(c => container.appendChild(renderCard(c)));
+  });
+
+  // update filter chip counts
+  document.querySelectorAll('.chip').forEach(chip => {
+    const cat = chip.dataset.cat;
+    const countEl = chip.querySelector('.count');
+    if(cat === 'all') countEl.textContent = cards.length;
+    else countEl.textContent = cards.filter(c => c.cat === cat).length;
+  });
+}
+
+function renderCard(c){
+  const meta = CATS[c.cat];
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.draggable = true;
+  el.dataset.id = c.id;
+  el.style.borderLeftColor = meta.color;
+  el.innerHTML = `
+    <button class="del" title="Remover" onclick="removeCard('${c.id}')">✕</button>
+    <span class="tag" style="background:${meta.color}">${meta.label}</span>
+    <div class="txt">${escapeHtml(c.txt)}</div>
+  `;
+  el.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', c.id);
+    setTimeout(()=> el.style.opacity='0.4', 0);
+  });
+  el.addEventListener('dragend', () => el.style.opacity='1');
+  return el;
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+document.querySelectorAll('.col').forEach(col => {
+  col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('dragover'); });
+  col.addEventListener('dragleave', () => col.classList.remove('dragover'));
+  col.addEventListener('drop', async e => {
+    e.preventDefault();
+    col.classList.remove('dragover');
+    const id = e.dataTransfer.getData('text/plain');
+    const card = cards.find(c => c.id === id);
+    if(card){
+      card.status = col.dataset.status;
+      await saveCards();
+      render();
+    }
+  });
+});
+
+async function addCard(){
+  const cat = document.getElementById('newCat').value;
+  const input = document.getElementById('newTxt');
+  const txt = input.value.trim();
+  if(!txt) return;
+  cards.push({id: uid(), cat, status:'afazer', txt});
+  input.value = '';
+  await saveCards();
+  render();
+}
+
+async function removeCard(id){
+  cards = cards.filter(c => c.id !== id);
+  await saveCards();
+  render();
+}
+
+document.getElementById('newTxt').addEventListener('keydown', e => {
+  if(e.key === 'Enter') addCard();
+});
+
+(async function init(){
+  await loadCards();
+  buildFilterRow();
+  render();
+})();
+</script>
+</body>
+</html>
