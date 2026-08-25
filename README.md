@@ -33,6 +33,8 @@ ANTHROPIC_API_KEY=...           # console.anthropic.com
 
 **Atenção**: `lib/recall.ts` foi escrito sem acesso à documentação ao vivo do Recall.ai — confira em https://docs.recall.ai se os endpoints e o formato do webhook ainda batem, e teste com uma reunião real antes de confiar no fluxo em produção. A API do Recall.ai é dividida por região; se der erro 401 "Invalid API token... might be for another Recall region", ajuste `RECALL_REGION`. Se as variáveis forem "Shared" (nível de time), edite o valor em Team Settings → Environment Variables → Shared — a aba do projeto não mostra nem permite recriar uma variável já herdada do time.
 
+**Transcrição**: além de cadastrar as credenciais da Gladia em Setup & Integrations → Transcription no dashboard do Recall.ai, o código também precisa pedir a transcrição em cada bot criado (`recording_config.transcript.provider.gladia_v2`, em `lib/recall.ts`) — só configurar o provedor no dashboard não liga a transcrição sozinho. `code_switching: true` fica ligado porque as aulas costumam misturar português e inglês na mesma fala.
+
 ### Desenvolvimento
 
 ```

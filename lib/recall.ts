@@ -35,6 +35,23 @@ export async function createBot(meetingUrl: string, webhookUrl: string) {
       meeting_url: meetingUrl,
       bot_name: "Painel da Professora",
       webhook_url: webhookUrl,
+      // O campo antigo "transcription_options" foi descontinuado pela
+      // Recall.ai (dava 400 "This field is not allowed"). No formato atual
+      // a transcrição precisa ser pedida por bot em recording_config -
+      // configurar a Gladia só no dashboard não liga a transcrição sozinho.
+      // code_switching liga porque a aula mistura português e inglês na
+      // mesma fala.
+      recording_config: {
+        transcript: {
+          provider: {
+            gladia_v2: {
+              language_config: {
+                code_switching: true,
+              },
+            },
+          },
+        },
+      },
     }),
   });
 
