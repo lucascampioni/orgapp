@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { Webhook } from "standardwebhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { extractBotId, getTranscriptText } from "@/lib/recall";
+import { extractBotId, extractTranscriptId, getTranscriptText } from "@/lib/recall";
 
 const SUMMARY_TOOL = {
   name: "salvar_resumo_aula",
@@ -88,9 +88,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Aula não encontrada" }, { status: 404 });
   }
 
+  // Só o evento transcript.done carrega o id da transcrição pronta - os
+  // outros eventos do bot (bot.done, recording.done etc.) chegam antes dela
+  // existir, então não tem o que buscar ainda.
+  const transcriptId = extractTranscriptId(payload);
+  if (!transcriptId) {
+    return NextResponse.json({ ok: true, skipped: "evento sem transcript pronto" });
+  }
+
   let transcript: string;
   try {
-    transcript = await getTranscriptText(botId);
+    transcript = await getTranscriptText(transcriptId);
   } catch (err) {
     console.error("Falha ao buscar transcript", err);
     return NextResponse.json({ error: "Falha ao buscar transcript" }, { status: 502 });

@@ -79,8 +79,25 @@ export function extractBotId(payload: unknown): string | null {
   return null;
 }
 
-export async function getTranscriptText(botId: string): Promise<string> {
-  const res = await fetch(`${RECALL_API_BASE}/bot/${botId}/transcript/`, {
+/**
+ * O evento "transcript.done" traz data.transcript.id - um recurso próprio,
+ * não aninhado no bot. Só esse evento carrega esse id (outros eventos do
+ * bot, como bot.done, não têm transcript nenhum ainda).
+ */
+export function extractTranscriptId(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const obj = payload as Record<string, unknown>;
+  const data = obj.data as Record<string, unknown> | undefined;
+  const transcript = data?.transcript as Record<string, unknown> | undefined;
+  return typeof transcript?.id === "string" ? transcript.id : null;
+}
+
+export async function getTranscriptText(transcriptId: string): Promise<string> {
+  // GET /bot/{id}/transcript/ é o endpoint antigo e não existe mais nesse
+  // formato para bots criados com recording_config - a transcrição agora é
+  // um recurso próprio (transcript.id vindo do webhook), buscado aqui e
+  // baixado via download_url (guardado em blob storage, não inline).
+  const res = await fetch(`${RECALL_API_BASE}/transcript/${transcriptId}/`, {
     headers: authHeaders(),
   });
 
@@ -90,8 +107,32 @@ export async function getTranscriptText(botId: string): Promise<string> {
     );
   }
 
-  const data = (await res.json()) as unknown;
+  const meta = (await res.json()) as Record<string, unknown>;
+  const downloadUrl = findDownloadUrl(meta);
+  if (!downloadUrl) {
+    console.error("Transcript sem download_url reconhecível", JSON.stringify(meta).slice(0, 2000));
+    throw new Error("Resposta do transcript sem download_url");
+  }
+
+  const fileRes = await fetch(downloadUrl);
+  if (!fileRes.ok) {
+    throw new Error(`Falha ao baixar transcript (${fileRes.status})`);
+  }
+
+  const data = (await fileRes.json()) as unknown;
   return flattenTranscript(data);
+}
+
+/** Tenta achar a download_url em alguns formatos plausíveis de resposta. */
+function findDownloadUrl(meta: Record<string, unknown>): string | null {
+  const paths: unknown[] = [
+    (meta.data as Record<string, unknown> | undefined)?.download_url,
+    meta.download_url,
+    ((meta.data as Record<string, unknown> | undefined)?.data as Record<string, unknown> | undefined)
+      ?.download_url,
+  ];
+  const found = paths.find((v) => typeof v === "string");
+  return typeof found === "string" ? found : null;
 }
 
 /** Tenta lidar com alguns formatos plausíveis de resposta de transcript. */
