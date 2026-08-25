@@ -10,6 +10,7 @@ import type {
   Material,
   MaterialTipo,
   Nivel,
+  TarefaAula,
   Turma,
 } from "@/lib/types";
 import LogoutButton from "@/components/LogoutButton";
@@ -21,12 +22,14 @@ export default function Dashboard({
   initialAlunos,
   initialAulas,
   initialMateriais,
+  initialTarefasAula,
   userEmail,
 }: {
   initialTurmas: Turma[];
   initialAlunos: Aluno[];
   initialAulas: Aula[];
   initialMateriais: Material[];
+  initialTarefasAula: TarefaAula[];
   userEmail: string;
 }) {
   const [tab, setTab] = useState<Tab>("turmas");
@@ -34,6 +37,7 @@ export default function Dashboard({
   const [alunos, setAlunos] = useState<Aluno[]>(initialAlunos);
   const [aulas, setAulas] = useState<Aula[]>(initialAulas);
   const [materiais, setMateriais] = useState<Material[]>(initialMateriais);
+  const [tarefasAula, setTarefasAula] = useState<TarefaAula[]>(initialTarefasAula);
   const [openTurmaId, setOpenTurmaId] = useState<string | null>(null);
   const [openAulaId, setOpenAulaId] = useState<string | null>(null);
   const [openMaterialId, setOpenMaterialId] = useState<string | null>(null);
@@ -165,6 +169,65 @@ export default function Dashboard({
     if (error) {
       console.error("Falha ao remover aula", error);
       setAulas(prevAulas);
+    }
+  }
+
+  async function iniciarGravacao(aulaId: string) {
+    const res = await fetch("/api/recall/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ aulaId }),
+    });
+    const body = (await res.json()) as { botId?: string; error?: string };
+    if (!res.ok || !body.botId) {
+      console.error("Falha ao iniciar gravação", body.error);
+      return body.error ?? "Falha ao iniciar gravação";
+    }
+    setAulas((prev) =>
+      prev.map((a) => (a.id === aulaId ? { ...a, recall_bot_id: body.botId! } : a)),
+    );
+    return null;
+  }
+
+  async function toggleTarefaAula(tarefa: TarefaAula) {
+    const prev = tarefasAula;
+    const concluida = !tarefa.concluida;
+    setTarefasAula((cur) =>
+      cur.map((t) => (t.id === tarefa.id ? { ...t, concluida } : t)),
+    );
+    const { error } = await supabase
+      .from("tarefas_aula")
+      .update({ concluida })
+      .eq("id", tarefa.id);
+    if (error) {
+      console.error("Falha ao atualizar tarefa da aula", error);
+      setTarefasAula(prev);
+    }
+  }
+
+  async function removeTarefaAula(id: string) {
+    const prev = tarefasAula;
+    setTarefasAula((cur) => cur.filter((t) => t.id !== id));
+    const { error } = await supabase.from("tarefas_aula").delete().eq("id", id);
+    if (error) {
+      console.error("Falha ao remover tarefa da aula", error);
+      setTarefasAula(prev);
+    }
+  }
+
+  async function refreshAula(aulaId: string) {
+    const [{ data: aula }, { data: tarefas }] = await Promise.all([
+      supabase.from("aulas").select("*").eq("id", aulaId).single(),
+      supabase.from("tarefas_aula").select("*").eq("aula_id", aulaId),
+    ]);
+    if (aula) {
+      setAulas((prev) => prev.map((a) => (a.id === aulaId ? (aula as Aula) : a)));
+    }
+    if (tarefas) {
+      setTarefasAula((prev) => [
+        ...prev.filter((t) => t.aula_id !== aulaId),
+        ...(tarefas as TarefaAula[]),
+      ]);
     }
   }
 
@@ -300,8 +363,13 @@ export default function Dashboard({
         <AulaModal
           aula={openAula}
           turmas={turmas}
+          tarefas={tarefasAula.filter((t) => t.aula_id === openAula.id)}
           onClose={() => setOpenAulaId(null)}
           onSave={(fields) => updateAula(openAula.id, fields)}
+          onIniciarGravacao={() => iniciarGravacao(openAula.id)}
+          onRefresh={() => refreshAula(openAula.id)}
+          onToggleTarefa={toggleTarefaAula}
+          onRemoveTarefa={removeTarefaAula}
         />
       )}
 
@@ -764,13 +832,23 @@ function AulasTab({
 function AulaModal({
   aula,
   turmas,
+  tarefas,
   onClose,
   onSave,
+  onIniciarGravacao,
+  onRefresh,
+  onToggleTarefa,
+  onRemoveTarefa,
 }: {
   aula: Aula;
   turmas: Turma[];
+  tarefas: TarefaAula[];
   onClose: () => void;
   onSave: (fields: Partial<Aula>) => Promise<void>;
+  onIniciarGravacao: () => Promise<string | null>;
+  onRefresh: () => Promise<void>;
+  onToggleTarefa: (tarefa: TarefaAula) => void;
+  onRemoveTarefa: (id: string) => void;
 }) {
   const [titulo, setTitulo] = useState(aula.titulo);
   const [turmaId, setTurmaId] = useState(aula.turma_id ?? "");
@@ -778,7 +856,11 @@ function AulaModal({
   const [status, setStatus] = useState<AulaStatus>(aula.status);
   const [objetivo, setObjetivo] = useState(aula.objetivo ?? "");
   const [conteudo, setConteudo] = useState(aula.conteudo ?? "");
+  const [meetLink, setMeetLink] = useState(aula.meet_link ?? "");
   const [saving, setSaving] = useState(false);
+  const [gravacaoLoading, setGravacaoLoading] = useState(false);
+  const [gravacaoErro, setGravacaoErro] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -789,9 +871,24 @@ function AulaModal({
       status,
       objetivo: objetivo.trim() || null,
       conteudo: conteudo.trim() || null,
+      meet_link: meetLink.trim() || null,
     });
     setSaving(false);
     onClose();
+  }
+
+  async function handleIniciarGravacao() {
+    setGravacaoLoading(true);
+    setGravacaoErro(null);
+    const erro = await onIniciarGravacao();
+    setGravacaoLoading(false);
+    if (erro) setGravacaoErro(erro);
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await onRefresh();
+    setRefreshing(false);
   }
 
   return (
@@ -851,7 +948,15 @@ function AulaModal({
         onChange={(e) => setConteudo(e.target.value)}
         rows={6}
         placeholder="Atividades, materiais, anotações..."
-        className={`mb-4 resize-none ${inputClass}`}
+        className={`mb-3 resize-none ${inputClass}`}
+      />
+
+      <label className={labelClass}>Link do Google Meet</label>
+      <input
+        value={meetLink}
+        onChange={(e) => setMeetLink(e.target.value)}
+        placeholder="https://meet.google.com/..."
+        className={`mb-4 ${inputClass}`}
       />
 
       <div className="flex justify-end gap-2">
@@ -861,6 +966,85 @@ function AulaModal({
         <button onClick={handleSave} disabled={saving} className={primaryButtonClass}>
           {saving ? "Salvando..." : "Salvar"}
         </button>
+      </div>
+
+      <div className="mt-5 border-t border-[#343A44] pt-4">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[13px] font-semibold text-[#E9ECEF]">
+            Gravação com IA
+          </span>
+          {(aula.recall_bot_id || aula.resumo_ia) && (
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="text-xs text-[#8C94A0] transition hover:text-[#E9ECEF]"
+            >
+              {refreshing ? "Atualizando..." : "↻ Atualizar"}
+            </button>
+          )}
+        </div>
+
+        {!aula.meet_link && (
+          <p className="text-xs text-[#8C94A0]">
+            Salve um link do Google Meet acima para poder gravar essa aula com IA.
+          </p>
+        )}
+
+        {aula.meet_link && !aula.recall_bot_id && (
+          <button
+            onClick={handleIniciarGravacao}
+            disabled={gravacaoLoading}
+            className={primaryButtonClass}
+          >
+            {gravacaoLoading ? "Iniciando..." : "🎥 Iniciar gravação com IA"}
+          </button>
+        )}
+
+        {gravacaoErro && (
+          <p className="mt-2 text-xs text-[#FF6B6B]">{gravacaoErro}</p>
+        )}
+
+        {aula.recall_bot_id && !aula.resumo_ia && (
+          <p className="text-xs text-[#8C94A0]">
+            Gravação iniciada. O resumo aparece aqui automaticamente quando a
+            aula terminar (clique em Atualizar pra checar).
+          </p>
+        )}
+
+        {aula.resumo_ia && (
+          <div className="mb-3 rounded-lg border border-[#343A44] bg-[#2A2F37] p-3 text-sm text-[#E9ECEF]">
+            {aula.resumo_ia}
+          </div>
+        )}
+
+        {tarefas.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            {tarefas.map((t) => (
+              <div key={t.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={t.concluida}
+                  onChange={() => onToggleTarefa(t)}
+                  className="h-4 w-4"
+                />
+                <span
+                  className={`flex-1 text-sm ${
+                    t.concluida ? "text-[#8C94A0] line-through" : "text-[#E9ECEF]"
+                  }`}
+                >
+                  {t.descricao}
+                </span>
+                <button
+                  onClick={() => onRemoveTarefa(t.id)}
+                  title="Remover"
+                  className="text-[#8C94A0] hover:text-[#FF6B6B]"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </ModalShell>
   );

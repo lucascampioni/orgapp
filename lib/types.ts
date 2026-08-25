@@ -27,6 +27,17 @@ export interface Aula {
   objetivo: string | null;
   conteudo: string | null;
   status: AulaStatus;
+  meet_link: string | null;
+  resumo_ia: string | null;
+  recall_bot_id: string | null;
+  criado_em: string;
+}
+
+export interface TarefaAula {
+  id: string;
+  aula_id: string;
+  descricao: string;
+  concluida: boolean;
   criado_em: string;
 }
 

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Dashboard from "@/components/Dashboard";
-import type { Aluno, Aula, Material, Turma } from "@/lib/types";
+import type { Aluno, Aula, Material, TarefaAula, Turma } from "@/lib/types";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -18,6 +18,7 @@ export default async function Home() {
     { data: alunos },
     { data: aulas },
     { data: materiais },
+    { data: tarefasAula },
   ] = await Promise.all([
     supabase.from("turmas").select("*").order("nome", { ascending: true }),
     supabase.from("alunos").select("*").order("nome", { ascending: true }),
@@ -26,6 +27,10 @@ export default async function Home() {
       .from("materiais")
       .select("*")
       .order("criado_em", { ascending: false }),
+    supabase
+      .from("tarefas_aula")
+      .select("*")
+      .order("criado_em", { ascending: true }),
   ]);
 
   return (
@@ -34,6 +39,7 @@ export default async function Home() {
       initialAlunos={(alunos as Aluno[]) ?? []}
       initialAulas={(aulas as Aula[]) ?? []}
       initialMateriais={(materiais as Material[]) ?? []}
+      initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
       userEmail={user.email ?? ""}
     />
   );
