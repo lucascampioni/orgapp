@@ -13,7 +13,12 @@
  * Teste com uma reunião real antes de usar de verdade.
  */
 
-const RECALL_API_BASE = "https://api.recall.ai/api/v1";
+// A API do Recall.ai é dividida por região (a chave só funciona na região
+// em que a conta foi criada). Configure RECALL_REGION se sua conta não for
+// us-east-1 — veja qual é a sua em https://us-east-1.recall.ai/dashboard/api-keys
+// (ou o equivalente na sua região) ou no erro 401 retornado pela API.
+const RECALL_REGION = process.env.RECALL_REGION || "us-east-1";
+const RECALL_API_BASE = `https://${RECALL_REGION}.recall.ai/api/v1`;
 
 function authHeaders() {
   return {

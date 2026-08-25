@@ -41,8 +41,9 @@ export async function POST(request: NextRequest) {
     botId = await createBot(aula.meet_link, webhookUrl.toString());
   } catch (err) {
     console.error("Falha ao iniciar bot do Recall.ai", err);
+    const detail = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: "Falha ao iniciar a gravação com o Recall.ai" },
+      { error: `Falha ao iniciar a gravação com o Recall.ai: ${detail}` },
       { status: 502 },
     );
   }
