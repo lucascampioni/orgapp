@@ -19,7 +19,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 Uma aula com um link do Google Meet cadastrado pode ter um bot (via [Recall.ai](https://recall.ai)) entrando pra gravar/transcrever, e a transcrição vira automaticamente um resumo + tarefas de acompanhamento (via API da Anthropic) na própria aula. Isso é opcional — sem essas variáveis o resto do app funciona normalmente, só o botão "Iniciar gravação com IA" não funciona.
 
-Para habilitar, preencha em `.env.local` (e nas env vars da Vercel):
+Variáveis necessárias (`.env.local` e nas env vars da Vercel):
 
 ```
 SUPABASE_SERVICE_ROLE_KEY=...   # Project Settings → API → service_role (secreta!)
