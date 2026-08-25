@@ -24,7 +24,7 @@ Variáveis necessárias (`.env.local` e nas env vars da Vercel):
 ```
 SUPABASE_SERVICE_ROLE_KEY=...   # Project Settings → API → service_role (secreta!)
 RECALL_API_KEY=...              # conta no recall.ai
-RECALL_REGION=us-east-1         # us-east-1, us-west-2, eu-central-1 ou ap-northeast-1 — confira no dashboard do Recall.ai
+RECALL_REGION=us-west-2         # us-east-1, us-west-2, eu-central-1 ou ap-northeast-1 — aparece na própria URL do dashboard do Recall.ai
 RECALL_WEBHOOK_SECRET=...       # qualquer string aleatória, escolhida por você
 ANTHROPIC_API_KEY=...           # console.anthropic.com
 ```
