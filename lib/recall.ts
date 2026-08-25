@@ -39,12 +39,14 @@ export async function createBot(meetingUrl: string, webhookUrl: string) {
       // Recall.ai (dava 400 "This field is not allowed"). No formato atual
       // a transcrição precisa ser pedida por bot em recording_config -
       // configurar a Gladia só no dashboard não liga a transcrição sozinho.
-      // code_switching liga porque a aula mistura português e inglês na
-      // mesma fala.
+      // A própria API devolveu a lista de chaves aceitas nessa conta num
+      // erro 400 anterior; "gladia_v2_streaming" é a chave certa (não
+      // "gladia_v2"). code_switching liga porque a aula mistura português e
+      // inglês na mesma fala.
       recording_config: {
         transcript: {
           provider: {
-            gladia_v2: {
+            gladia_v2_streaming: {
               language_config: {
                 code_switching: true,
               },
