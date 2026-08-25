@@ -15,6 +15,21 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 3. Crie os usuários que poderão logar em **Authentication → Users** no painel do Supabase (não há cadastro público pelo app).
 
+### Gravação e resumo de aulas com IA (opcional)
+
+Uma aula com um link do Google Meet cadastrado pode ter um bot (via [Recall.ai](https://recall.ai)) entrando pra gravar/transcrever, e a transcrição vira automaticamente um resumo + tarefas de acompanhamento (via API da Anthropic) na própria aula. Isso é opcional — sem essas variáveis o resto do app funciona normalmente, só o botão "Iniciar gravação com IA" não funciona.
+
+Variáveis necessárias (`.env.local` e nas env vars da Vercel):
+
+```
+SUPABASE_SERVICE_ROLE_KEY=...   # Project Settings → API → service_role (secreta!)
+RECALL_API_KEY=...              # conta no recall.ai
+RECALL_WEBHOOK_SECRET=...       # qualquer string aleatória, escolhida por você
+ANTHROPIC_API_KEY=...           # console.anthropic.com
+```
+
+**Atenção**: `lib/recall.ts` foi escrito sem acesso à documentação ao vivo do Recall.ai — confira em https://docs.recall.ai se os endpoints e o formato do webhook ainda batem, e teste com uma reunião real antes de confiar no fluxo em produção.
+
 ### Desenvolvimento
 
 ```

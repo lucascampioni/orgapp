@@ -35,6 +35,22 @@ create table if not exists public.aulas (
   status text not null default 'planejada' check (
     status in ('planejada', 'dada')
   ),
+  meet_link text,
+  resumo_ia text,
+  recall_bot_id text,
+  criado_em timestamptz not null default now()
+);
+
+-- Migração segura para bancos que já tinham a tabela sem estas colunas.
+alter table public.aulas add column if not exists meet_link text;
+alter table public.aulas add column if not exists resumo_ia text;
+alter table public.aulas add column if not exists recall_bot_id text;
+
+create table if not exists public.tarefas_aula (
+  id uuid primary key default gen_random_uuid(),
+  aula_id uuid not null references public.aulas(id) on delete cascade,
+  descricao text not null,
+  concluida boolean not null default false,
   criado_em timestamptz not null default now()
 );
 
@@ -54,14 +70,17 @@ alter table public.turmas enable row level security;
 alter table public.alunos enable row level security;
 alter table public.aulas enable row level security;
 alter table public.materiais enable row level security;
+alter table public.tarefas_aula enable row level security;
 
 -- Políticas de RLS idênticas (CRUD liberado para usuários autenticados)
--- nas 4 tabelas, geradas num loop para não repetir o mesmo bloco 4x.
+-- nas 5 tabelas, geradas num loop para não repetir o mesmo bloco 5x.
+-- O webhook do Recall.ai grava resumo_ia/tarefas_aula usando a service
+-- role key (bypassa RLS), já que roda sem sessão de usuário logado.
 do $$
 declare
   t text;
 begin
-  foreach t in array array['turmas', 'alunos', 'aulas', 'materiais'] loop
+  foreach t in array array['turmas', 'alunos', 'aulas', 'materiais', 'tarefas_aula'] loop
     execute format(
       'drop policy if exists "%1$s_select_authenticated" on public.%1$s',
       t
