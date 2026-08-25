@@ -29,7 +29,7 @@ RECALL_WEBHOOK_SECRET=...       # qualquer string aleatória, escolhida por voc�
 ANTHROPIC_API_KEY=...           # console.anthropic.com
 ```
 
-**Atenção**: `lib/recall.ts` foi escrito sem acesso à documentação ao vivo do Recall.ai — confira em https://docs.recall.ai se os endpoints e o formato do webhook ainda batem, e teste com uma reunião real antes de confiar no fluxo em produção. A API do Recall.ai é dividida por região; se der erro 401 "Invalid API token... might be for another Recall region", ajuste `RECALL_REGION`.
+**Atenção**: `lib/recall.ts` foi escrito sem acesso à documentação ao vivo do Recall.ai — confira em https://docs.recall.ai se os endpoints e o formato do webhook ainda batem, e teste com uma reunião real antes de confiar no fluxo em produção. A API do Recall.ai é dividida por região; se der erro 401 "Invalid API token... might be for another Recall region", ajuste `RECALL_REGION`. Se as variáveis forem "Shared" (nível de time), edite o valor em Team Settings → Environment Variables → Shared — a aba do projeto não mostra nem permite recriar uma variável já herdada do time.
 
 ### Desenvolvimento
 
