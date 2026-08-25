@@ -15,9 +15,9 @@
 
 // A API do Recall.ai é dividida por região (a chave só funciona na região
 // em que a conta foi criada). Configure RECALL_REGION se sua conta não for
-// us-east-1 — veja qual é a sua em https://us-east-1.recall.ai/dashboard/api-keys
-// (ou o equivalente na sua região) ou no erro 401 retornado pela API.
-const RECALL_REGION = process.env.RECALL_REGION || "us-east-1";
+// us-west-2 — a região da sua conta aparece na própria URL do dashboard
+// (ex: https://us-west-2.recall.ai/dashboard/...) ou no erro 401 da API.
+const RECALL_REGION = process.env.RECALL_REGION || "us-west-2";
 const RECALL_API_BASE = `https://${RECALL_REGION}.recall.ai/api/v1`;
 
 function authHeaders() {
