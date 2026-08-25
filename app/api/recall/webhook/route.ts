@@ -52,21 +52,33 @@ async function summarize(transcript: string) {
 }
 
 export async function POST(request: NextRequest) {
+  try {
+    return await handlePost(request);
+  } catch (err) {
+    // Rede de segurança: sem isso, uma exceção não tratada vira um 500 com
+    // corpo vazio (o Recall.ai não mostra nada útil no Message Log).
+    console.error("Erro não tratado no webhook do Recall.ai", err);
+    const detail = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Erro interno: ${detail}` }, { status: 500 });
+  }
+}
+
+async function handlePost(request: NextRequest) {
   // O Recall.ai assina os webhooks no padrão Standard Webhooks/Svix (o
   // "Verification Secret" no formato whsec_... do dashboard deles). O corpo
   // precisa ser lido como texto puro para a assinatura bater.
   const rawBody = await request.text();
-  const wh = new Webhook(process.env.RECALL_WEBHOOK_SECRET!);
 
   let payload: unknown;
   try {
+    const wh = new Webhook(process.env.RECALL_WEBHOOK_SECRET!);
     payload = wh.verify(rawBody, {
       "webhook-id": request.headers.get("webhook-id") ?? "",
       "webhook-timestamp": request.headers.get("webhook-timestamp") ?? "",
       "webhook-signature": request.headers.get("webhook-signature") ?? "",
     });
   } catch (err) {
-    console.error("Assinatura de webhook do Recall.ai inválida", err);
+    console.error("Assinatura de webhook do Recall.ai inválida (ou RECALL_WEBHOOK_SECRET ausente/errado)", err);
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
