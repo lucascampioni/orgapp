@@ -38,7 +38,7 @@ export default function LoginForm() {
       className="w-full max-w-sm rounded-xl border border-[#343A44] bg-[#22262D] p-6"
     >
       <h1 className="mb-1 text-lg font-bold text-[#E9ECEF]">
-        Painel de Tarefas
+        Painel da Professora
       </h1>
       <p className="mb-6 text-sm text-[#8C94A0]">Entre com sua conta</p>
 
@@ -52,7 +52,7 @@ export default function LoginForm() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         className="mb-4 w-full rounded-lg border border-[#343A44] bg-[#2A2F37] px-3 py-2 text-sm text-[#E9ECEF] outline-none focus:border-[#5C9EFF]"
-        placeholder="voce@empresa.com"
+        placeholder="voce@escola.com"
       />
 
       <label className="mb-1 block text-xs font-medium text-[#8C94A0]">
