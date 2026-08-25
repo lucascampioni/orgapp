@@ -79,7 +79,20 @@ async function handlePost(request: NextRequest) {
     });
   } catch (err) {
     console.error("Assinatura de webhook do Recall.ai inválida (ou RECALL_WEBHOOK_SECRET ausente/errado)", err);
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    // Diagnóstico temporário: não expõe o segredo, só confirma se a env var
+    // que a Vercel está usando de fato bate com o formato esperado.
+    const secret = process.env.RECALL_WEBHOOK_SECRET ?? "";
+    return NextResponse.json(
+      {
+        error: "Não autorizado",
+        debug: {
+          secretLength: secret.length,
+          secretStartsWithWhsec: secret.startsWith("whsec_"),
+          secretHasWhitespace: secret !== secret.trim(),
+        },
+      },
+      { status: 401 },
+    );
   }
 
   const botId = extractBotId(payload);
