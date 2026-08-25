@@ -141,7 +141,8 @@ async function handlePost(request: NextRequest) {
     tarefas = result.tarefas;
   } catch (err) {
     console.error("Falha ao gerar resumo com IA", err);
-    return NextResponse.json({ error: "Falha ao gerar resumo" }, { status: 502 });
+    const detail = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Falha ao gerar resumo: ${detail}` }, { status: 502 });
   }
 
   const { error: updateError } = await supabase
