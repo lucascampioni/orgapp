@@ -34,7 +34,6 @@ export async function createBot(meetingUrl: string, webhookUrl: string) {
     body: JSON.stringify({
       meeting_url: meetingUrl,
       bot_name: "Painel da Professora",
-      transcription_options: { provider: "meeting_captions" },
       webhook_url: webhookUrl,
     }),
   });
