@@ -33,8 +33,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // O Recall.ai autentica webhooks por assinatura (Standard Webhooks), não
+  // por essa URL carregar segredo nenhum. O envio principal do webhook_url
+  // é feito uma vez no dashboard do Recall.ai (Webhooks); mandar aqui também
+  // é só um possível reforço por bot, caso a API aceite o override.
   const webhookUrl = new URL("/api/recall/webhook", request.nextUrl.origin);
-  webhookUrl.searchParams.set("secret", process.env.RECALL_WEBHOOK_SECRET ?? "");
 
   let botId: string;
   try {

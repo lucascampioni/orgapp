@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { Webhook } from "standardwebhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { extractBotId, getTranscriptText } from "@/lib/recall";
 
@@ -51,12 +52,24 @@ async function summarize(transcript: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = request.nextUrl.searchParams.get("secret");
-  if (!secret || secret !== process.env.RECALL_WEBHOOK_SECRET) {
+  // O Recall.ai assina os webhooks no padrão Standard Webhooks/Svix (o
+  // "Verification Secret" no formato whsec_... do dashboard deles). O corpo
+  // precisa ser lido como texto puro para a assinatura bater.
+  const rawBody = await request.text();
+  const wh = new Webhook(process.env.RECALL_WEBHOOK_SECRET!);
+
+  let payload: unknown;
+  try {
+    payload = wh.verify(rawBody, {
+      "webhook-id": request.headers.get("webhook-id") ?? "",
+      "webhook-timestamp": request.headers.get("webhook-timestamp") ?? "",
+      "webhook-signature": request.headers.get("webhook-signature") ?? "",
+    });
+  } catch (err) {
+    console.error("Assinatura de webhook do Recall.ai inválida", err);
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const payload = await request.json();
   const botId = extractBotId(payload);
   if (!botId) {
     return NextResponse.json({ error: "Payload sem bot id" }, { status: 400 });
