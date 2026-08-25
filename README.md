@@ -1,6 +1,6 @@
-## Painel de Tarefas
+## Painel da Professora
 
-Quadro Kanban (App Router + TypeScript + Tailwind) com login via Supabase Auth.
+Ferramenta (App Router + TypeScript + Tailwind) para professoras de inglês organizarem turmas, alunos, planos de aula e um banco de vocabulário/exercícios, com login via Supabase Auth.
 
 ### Configuração
 
@@ -11,7 +11,7 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-2. Rode `supabase/schema.sql` no SQL Editor do seu projeto Supabase (cria a tabela `tasks`, as políticas de RLS e os cards iniciais).
+2. Rode `supabase/schema.sql` no SQL Editor do seu projeto Supabase (cria as tabelas `turmas`, `alunos`, `aulas` e `materiais`, com RLS para usuários autenticados).
 
 3. Crie os usuários que poderão logar em **Authentication → Users** no painel do Supabase (não há cadastro público pelo app).
 

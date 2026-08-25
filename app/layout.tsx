@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Painel de Tarefas",
-  description: "Quadro Kanban de tarefas por cliente/área",
+  title: "Painel da Professora",
+  description: "Turmas, alunos, planejador de aulas e banco de vocabulário/exercícios",
 };
 
 export default function RootLayout({

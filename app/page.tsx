@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import Board from "@/components/Board";
-import type { Task } from "@/lib/types";
+import Dashboard from "@/components/Dashboard";
+import type { Aluno, Aula, Material, Turma } from "@/lib/types";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -13,12 +13,28 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const { data: tasks } = await supabase
-    .from("tasks")
-    .select("*")
-    .order("criado_em", { ascending: true });
+  const [
+    { data: turmas },
+    { data: alunos },
+    { data: aulas },
+    { data: materiais },
+  ] = await Promise.all([
+    supabase.from("turmas").select("*").order("nome", { ascending: true }),
+    supabase.from("alunos").select("*").order("nome", { ascending: true }),
+    supabase.from("aulas").select("*").order("data", { ascending: true }),
+    supabase
+      .from("materiais")
+      .select("*")
+      .order("criado_em", { ascending: false }),
+  ]);
 
   return (
-    <Board initialTasks={(tasks as Task[]) ?? []} userEmail={user.email ?? ""} />
+    <Dashboard
+      initialTurmas={(turmas as Turma[]) ?? []}
+      initialAlunos={(alunos as Aluno[]) ?? []}
+      initialAulas={(aulas as Aula[]) ?? []}
+      initialMateriais={(materiais as Material[]) ?? []}
+      userEmail={user.email ?? ""}
+    />
   );
 }
