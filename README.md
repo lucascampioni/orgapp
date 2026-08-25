@@ -24,11 +24,12 @@ Variáveis necessárias (`.env.local` e nas env vars da Vercel):
 ```
 SUPABASE_SERVICE_ROLE_KEY=...   # Project Settings → API → service_role (secreta!)
 RECALL_API_KEY=...              # conta no recall.ai
+RECALL_REGION=us-east-1         # us-east-1, us-west-2, eu-central-1 ou ap-northeast-1 — confira no dashboard do Recall.ai
 RECALL_WEBHOOK_SECRET=...       # qualquer string aleatória, escolhida por você
 ANTHROPIC_API_KEY=...           # console.anthropic.com
 ```
 
-**Atenção**: `lib/recall.ts` foi escrito sem acesso à documentação ao vivo do Recall.ai — confira em https://docs.recall.ai se os endpoints e o formato do webhook ainda batem, e teste com uma reunião real antes de confiar no fluxo em produção.
+**Atenção**: `lib/recall.ts` foi escrito sem acesso à documentação ao vivo do Recall.ai — confira em https://docs.recall.ai se os endpoints e o formato do webhook ainda batem, e teste com uma reunião real antes de confiar no fluxo em produção. A API do Recall.ai é dividida por região; se der erro 401 "Invalid API token... might be for another Recall region", ajuste `RECALL_REGION`.
 
 ### Desenvolvimento
 
