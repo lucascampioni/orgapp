@@ -25,9 +25,11 @@ Variáveis necessárias (`.env.local` e nas env vars da Vercel):
 SUPABASE_SERVICE_ROLE_KEY=...   # Project Settings → API → service_role (secreta!)
 RECALL_API_KEY=...              # conta no recall.ai
 RECALL_REGION=us-west-2         # us-east-1, us-west-2, eu-central-1 ou ap-northeast-1 — aparece na própria URL do dashboard do Recall.ai
-RECALL_WEBHOOK_SECRET=...       # qualquer string aleatória, escolhida por você
+RECALL_WEBHOOK_SECRET=whsec_... # "Verification Secret" do dashboard do Recall.ai (Developers > API Keys & Secrets) — NÃO é uma string escolhida por você
 ANTHROPIC_API_KEY=...           # console.anthropic.com
 ```
+
+**Passo extra obrigatório**: no dashboard do Recall.ai, em **Webhooks**, cadastre a URL `https://SEU-DOMINIO/api/recall/webhook` (produção) para receber o evento de fim de gravação/transcrição — sem isso o app nunca fica sabendo que a aula terminou, mesmo com o bot entrando certinho na call.
 
 **Atenção**: `lib/recall.ts` foi escrito sem acesso à documentação ao vivo do Recall.ai — confira em https://docs.recall.ai se os endpoints e o formato do webhook ainda batem, e teste com uma reunião real antes de confiar no fluxo em produção. A API do Recall.ai é dividida por região; se der erro 401 "Invalid API token... might be for another Recall region", ajuste `RECALL_REGION`. Se as variáveis forem "Shared" (nível de time), edite o valor em Team Settings → Environment Variables → Shared — a aba do projeto não mostra nem permite recriar uma variável já herdada do time.
 
