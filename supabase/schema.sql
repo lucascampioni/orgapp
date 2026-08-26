@@ -162,7 +162,7 @@ begin
     update public.aulas
     set aluno_id = sub.aluno_id
     from (
-      select turma_id, min(id) as aluno_id
+      select turma_id, (array_agg(id))[1] as aluno_id
       from public.alunos
       where turma_id is not null
       group by turma_id
