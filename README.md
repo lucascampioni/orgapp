@@ -1,6 +1,8 @@
-## Painel da Professora
+## Lumina
 
-Ferramenta (App Router + TypeScript + Tailwind) para professoras de inglês organizarem turmas, alunos, planos de aula e um banco de vocabulário/exercícios, com login via Supabase Auth.
+Ferramenta (App Router + TypeScript + Tailwind) para professoras de inglês organizarem alunos, aulas, vocabulário e pagamentos, com login via Supabase Auth.
+
+Cada professora só vê os alunos vinculados a ela; um mesmo aluno pode ser vinculado a mais de uma professora (por exemplo, duas professoras diferentes dando aula pro mesmo aluno) - nesse caso, o cadastro básico do aluno (nome/contato) é compartilhado, mas aulas, tarefas, vocabulário e pagamentos são particulares de cada vínculo.
 
 ### Configuração
 
@@ -11,13 +13,13 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-2. Rode `supabase/schema.sql` no SQL Editor do seu projeto Supabase (cria as tabelas `turmas`, `alunos`, `aulas` e `materiais`, com RLS para usuários autenticados).
+2. Rode `supabase/schema.sql` no SQL Editor do seu projeto Supabase. **Atenção se você já tinha um banco de uma versão anterior**: esse script faz uma migração de dados (cria `aluno_professor`, `vocabulario`, `pagamentos`, adiciona `professor_id`/`aluno_id`, e faz backfill assumindo que só existe uma professora usando o banco até agora). Depois de rodar, confira se as aulas antigas ficaram com o aluno certo em "Planejador de Aulas" - aulas de turmas com mais de um aluno não dá pra migrar automaticamente.
 
 3. Crie os usuários que poderão logar em **Authentication → Users** no painel do Supabase (não há cadastro público pelo app).
 
 ### Gravação e resumo de aulas com IA (opcional)
 
-Uma aula com um link do Google Meet cadastrado pode ter um bot (via [Recall.ai](https://recall.ai)) entrando pra gravar/transcrever, e a transcrição vira automaticamente um resumo + tarefas de acompanhamento (via API da Anthropic) na própria aula. Isso é opcional — sem essas variáveis o resto do app funciona normalmente, só o botão "Iniciar gravação com IA" não funciona.
+Uma aula com um link do Google Meet cadastrado pode ter um bot (via [Recall.ai](https://recall.ai)) entrando pra gravar/transcrever, e a transcrição vira automaticamente um resumo + tarefas de acompanhamento + vocabulário novo identificado (tudo via API da Anthropic) na própria aula e no perfil do aluno. Isso é opcional — sem essas variáveis o resto do app funciona normalmente, só o botão "Iniciar gravação com IA" não funciona.
 
 Variáveis necessárias (`.env.local` e nas env vars da Vercel):
 

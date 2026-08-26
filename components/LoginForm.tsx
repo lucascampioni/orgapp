@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import Logo from "@/components/Logo";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -35,45 +36,43 @@ export default function LoginForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-sm rounded-xl border border-[#343A44] bg-[#22262D] p-6"
+      className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-surface p-7 shadow-2xl shadow-black/40"
     >
-      <h1 className="mb-1 text-lg font-bold text-[#E9ECEF]">
-        Painel da Professora
-      </h1>
-      <p className="mb-6 text-sm text-[#8C94A0]">Entre com sua conta</p>
+      <div className="mb-6">
+        <Logo size="lg" />
+        <p className="mt-2 text-sm text-muted">
+          Alunos, aulas e vocabulário num só lugar.
+        </p>
+      </div>
 
-      <label className="mb-1 block text-xs font-medium text-[#8C94A0]">
-        E-mail
-      </label>
+      <label className="mb-1 block text-xs font-medium text-muted">E-mail</label>
       <input
         type="email"
         required
         autoComplete="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="mb-4 w-full rounded-lg border border-[#343A44] bg-[#2A2F37] px-3 py-2 text-sm text-[#E9ECEF] outline-none focus:border-[#5C9EFF]"
+        className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
         placeholder="voce@escola.com"
       />
 
-      <label className="mb-1 block text-xs font-medium text-[#8C94A0]">
-        Senha
-      </label>
+      <label className="mb-1 block text-xs font-medium text-muted">Senha</label>
       <input
         type="password"
         required
         autoComplete="current-password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="mb-4 w-full rounded-lg border border-[#343A44] bg-[#2A2F37] px-3 py-2 text-sm text-[#E9ECEF] outline-none focus:border-[#5C9EFF]"
+        className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
         placeholder="••••••••"
       />
 
-      {error && <p className="mb-4 text-sm text-[#FF6B6B]">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-[#5C9EFF] py-2 text-sm font-semibold text-[#0E1116] transition hover:brightness-110 disabled:opacity-60"
+        className="w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink transition hover:bg-brand-strong disabled:opacity-60"
       >
         {loading ? "Entrando..." : "Entrar"}
       </button>

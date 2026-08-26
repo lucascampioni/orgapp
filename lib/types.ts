@@ -10,10 +10,17 @@ export interface Turma {
 
 export interface Aluno {
   id: string;
-  turma_id: string | null;
   nome: string;
   contato: string | null;
   observacoes: string | null;
+  criado_em: string;
+}
+
+export interface AlunoProfessor {
+  id: string;
+  aluno_id: string;
+  professor_id: string;
+  turma_id: string | null;
   criado_em: string;
 }
 
@@ -21,6 +28,7 @@ export type AulaStatus = "planejada" | "dada";
 
 export interface Aula {
   id: string;
+  aluno_id: string | null;
   turma_id: string | null;
   titulo: string;
   data: string | null;
@@ -38,6 +46,26 @@ export interface TarefaAula {
   aula_id: string;
   descricao: string;
   concluida: boolean;
+  criado_em: string;
+}
+
+export interface Vocabulario {
+  id: string;
+  aluno_id: string;
+  aula_id: string | null;
+  termo: string;
+  significado: string | null;
+  exemplo: string | null;
+  criado_em: string;
+}
+
+export interface Pagamento {
+  id: string;
+  aluno_id: string;
+  valor: number;
+  vencimento: string;
+  pago_em: string | null;
+  observacoes: string | null;
   criado_em: string;
 }
 

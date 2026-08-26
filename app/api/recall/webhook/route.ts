@@ -22,8 +22,28 @@ const SUMMARY_TOOL = {
         description:
           "Lista curta de tarefas de acompanhamento (revisar algo, praticar algo, preparar material) que ficaram combinadas ou implícitas na aula. Pode ser vazia.",
       },
+      vocabulario: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            termo: { type: "string", description: "Palavra ou expressão em inglês." },
+            significado: {
+              type: "string",
+              description: "Tradução ou explicação curta em português.",
+            },
+            exemplo: {
+              type: "string",
+              description: "Frase de exemplo usada na aula, se houver.",
+            },
+          },
+          required: ["termo"],
+        },
+        description:
+          "Palavras ou expressões em inglês que ficam claramente sendo ensinadas/explicadas como vocabulário novo para o aluno nessa aula (ex: a professora traduz ou explica o significado de uma palavra). Não inclua palavras comuns já dominadas, só as que foram efetivamente ensinadas. Pode ser vazia.",
+      },
     },
-    required: ["resumo", "tarefas"],
+    required: ["resumo", "tarefas", "vocabulario"],
   },
 };
 
@@ -32,13 +52,13 @@ async function summarize(transcript: string) {
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-5",
-    max_tokens: 1024,
+    max_tokens: 1536,
     tools: [SUMMARY_TOOL],
     tool_choice: { type: "tool", name: SUMMARY_TOOL.name },
     messages: [
       {
         role: "user",
-        content: `Esta é a transcrição de uma aula de inglês. Gere um resumo e as tarefas de acompanhamento usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
+        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, as tarefas de acompanhamento e o vocabulário novo ensinado usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
       },
     ],
   });
@@ -48,7 +68,11 @@ async function summarize(transcript: string) {
     throw new Error("Claude não retornou o resumo estruturado esperado");
   }
 
-  return toolUse.input as { resumo: string; tarefas: string[] };
+  return toolUse.input as {
+    resumo: string;
+    tarefas: string[];
+    vocabulario: { termo: string; significado?: string; exemplo?: string }[];
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -91,7 +115,7 @@ async function handlePost(request: NextRequest) {
 
   const { data: aula, error: fetchError } = await supabase
     .from("aulas")
-    .select("id")
+    .select("id, aluno_id, professor_id")
     .eq("recall_bot_id", botId)
     .single();
 
@@ -122,10 +146,12 @@ async function handlePost(request: NextRequest) {
 
   let resumo: string;
   let tarefas: string[];
+  let vocabulario: { termo: string; significado?: string; exemplo?: string }[];
   try {
     const result = await summarize(transcript);
     resumo = result.resumo;
     tarefas = result.tarefas;
+    vocabulario = result.vocabulario ?? [];
   } catch (err) {
     console.error("Falha ao gerar resumo com IA", err);
     const detail = err instanceof Error ? err.message : String(err);
@@ -147,6 +173,24 @@ async function handlePost(request: NextRequest) {
     );
     if (insertError) {
       console.error("Falha ao salvar tarefas_aula", insertError);
+    }
+  }
+
+  // Só dá pra registrar vocabulário se a aula estiver ligada a um aluno
+  // (aulas antigas, de antes dessa coluna existir, podem não ter).
+  if (vocabulario.length > 0 && aula.aluno_id) {
+    const { error: vocabError } = await supabase.from("vocabulario").insert(
+      vocabulario.map((v) => ({
+        aluno_id: aula.aluno_id,
+        aula_id: aula.id,
+        professor_id: aula.professor_id,
+        termo: v.termo,
+        significado: v.significado ?? null,
+        exemplo: v.exemplo ?? null,
+      })),
+    );
+    if (vocabError) {
+      console.error("Falha ao salvar vocabulario", vocabError);
     }
   }
 

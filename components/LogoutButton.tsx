@@ -16,7 +16,7 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="rounded-full border border-[#343A44] bg-[#22262D] px-3 py-1.5 text-xs text-[#8C94A0] transition hover:border-[#5C9EFF] hover:text-[#E9ECEF]"
+      className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs text-muted transition hover:border-brand hover:text-ink"
     >
       Sair
     </button>

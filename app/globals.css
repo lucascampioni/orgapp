@@ -3,9 +3,39 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-fraunces);
+
+  /* Identidade visual da Lumina: fundo escuro e quente, acento âmbar. */
+  --color-bg: #14161d;
+  --color-surface: #1c1f29;
+  --color-surface-2: #262a36;
+  --color-surface-3: #2e3341;
+  --color-border: #343a4a;
+  --color-ink: #f4f1ea;
+  --color-muted: #a29cb0;
+  --color-faint: #6f6a7b;
+
+  --color-brand: #f2a93b;
+  --color-brand-strong: #ffbf5c;
+  --color-brand-ink: #211705;
+
+  --color-success: #34c795;
+  --color-danger: #ff7a7a;
+  --color-teal: #45c4b0;
+  --color-violet: #b98ce8;
 }
 
 html,
 body {
   height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+::selection {
+  background: var(--color-brand);
+  color: var(--color-brand-ink);
 }
