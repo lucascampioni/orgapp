@@ -127,6 +127,7 @@ alter table public.materiais add column if not exists professor_id uuid referenc
 do $$
 declare
   primeira_professora uuid;
+  alunos_tem_turma_id boolean;
 begin
   select id into primeira_professora from auth.users order by created_at asc limit 1;
   if primeira_professora is null then
@@ -137,38 +138,48 @@ begin
   update public.materiais set professor_id = primeira_professora where professor_id is null;
   update public.aulas set professor_id = primeira_professora where professor_id is null;
 
-  -- alunos que existiam antes de aluno_professor existir: linka todos à
-  -- primeira professora (era o comportamento implícito de antes, quando
-  -- não havia dono nenhum e todo mundo via tudo).
-  insert into public.aluno_professor (aluno_id, professor_id, turma_id)
-  select a.id, primeira_professora, a.turma_id
-  from public.alunos a
-  where not exists (
-    select 1 from public.aluno_professor ap where ap.aluno_id = a.id
-  )
-  -- só roda esse trecho se a coluna turma_id ainda existir em alunos
-  and exists (
+  -- O "if" acima checa em tempo de execução, mas o Postgres ainda precisa
+  -- conseguir *parsear* a referência a alunos.turma_id mesmo dentro de um
+  -- "if" que nunca roda - por isso os dois blocos abaixo usam "execute"
+  -- (SQL dinâmico), que só é parseado quando de fato executado. Sem isso,
+  -- rodar este script de novo depois que turma_id já foi removida (mais
+  -- abaixo) quebra com "column a.turma_id does not exist".
+  select exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'alunos' and column_name = 'turma_id'
-  );
+  ) into alunos_tem_turma_id;
 
-  -- aulas antigas (só tinham turma_id): tenta achar um aluno único daquela
-  -- turma pra preencher aluno_id; se a turma tiver mais de um aluno, fica
-  -- sem aluno mesmo (a professora ajusta manualmente depois no app).
-  if exists (
-    select 1 from information_schema.columns
-    where table_schema = 'public' and table_name = 'alunos' and column_name = 'turma_id'
-  ) then
-    update public.aulas
-    set aluno_id = sub.aluno_id
-    from (
-      select turma_id, (array_agg(id))[1] as aluno_id
-      from public.alunos
-      where turma_id is not null
-      group by turma_id
-      having count(*) = 1
-    ) sub
-    where public.aulas.turma_id = sub.turma_id and public.aulas.aluno_id is null;
+  if alunos_tem_turma_id then
+    -- alunos que existiam antes de aluno_professor existir: linka todos à
+    -- primeira professora (era o comportamento implícito de antes, quando
+    -- não havia dono nenhum e todo mundo via tudo).
+    execute '
+      insert into public.aluno_professor (aluno_id, professor_id, turma_id)
+      select a.id, $1, a.turma_id
+      from public.alunos a
+      where not exists (select 1 from public.aluno_professor ap where ap.aluno_id = a.id)
+    ' using primeira_professora;
+
+    -- aulas antigas (só tinham turma_id): tenta achar um aluno único
+    -- daquela turma pra preencher aluno_id; se a turma tiver mais de um
+    -- aluno, fica sem aluno mesmo (a professora ajusta depois no app).
+    execute '
+      update public.aulas
+      set aluno_id = sub.aluno_id
+      from (
+        select turma_id, (array_agg(id))[1] as aluno_id
+        from public.alunos
+        where turma_id is not null
+        group by turma_id
+        having count(*) = 1
+      ) sub
+      where public.aulas.turma_id = sub.turma_id and public.aulas.aluno_id is null
+    ';
+  else
+    insert into public.aluno_professor (aluno_id, professor_id)
+    select a.id, primeira_professora
+    from public.alunos a
+    where not exists (select 1 from public.aluno_professor ap where ap.aluno_id = a.id);
   end if;
 end;
 $$;
