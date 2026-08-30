@@ -6,7 +6,6 @@ import type {
   Aluno,
   AlunoProfessor,
   Aula,
-  Material,
   Pagamento,
   TarefaAula,
   Turma,
@@ -61,7 +60,6 @@ export default async function Home() {
     { data: alunos },
     { data: alunoProfessor },
     { data: aulas },
-    { data: materiais },
     { data: tarefasAula },
     { data: vocabulario },
     { data: pagamentos },
@@ -70,10 +68,6 @@ export default async function Home() {
     supabase.from("alunos").select("*").order("nome", { ascending: true }),
     supabase.from("aluno_professor").select("*"),
     supabase.from("aulas").select("*").order("data", { ascending: true }),
-    supabase
-      .from("materiais")
-      .select("*")
-      .order("criado_em", { ascending: false }),
     supabase
       .from("tarefas_aula")
       .select("*")
@@ -94,7 +88,6 @@ export default async function Home() {
       initialAlunos={(alunos as Aluno[]) ?? []}
       initialAlunoProfessor={(alunoProfessor as AlunoProfessor[]) ?? []}
       initialAulas={(aulas as Aula[]) ?? []}
-      initialMateriais={(materiais as Material[]) ?? []}
       initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
       initialVocabulario={(vocabulario as Vocabulario[]) ?? []}
       initialPagamentos={(pagamentos as Pagamento[]) ?? []}

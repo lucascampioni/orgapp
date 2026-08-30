@@ -13,7 +13,7 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
-2. Rode `supabase/schema.sql` no SQL Editor do seu projeto Supabase. **Atenção se você já tinha um banco de uma versão anterior**: esse script faz uma migração de dados (cria `aluno_professor`, `vocabulario`, `pagamentos`, adiciona `professor_id`/`aluno_id`, e faz backfill assumindo que só existe uma professora usando o banco até agora). Depois de rodar, confira se as aulas antigas ficaram com o aluno certo em "Planejador de Aulas" - aulas de turmas com mais de um aluno não dá pra migrar automaticamente.
+2. Rode `supabase/schema.sql` no SQL Editor do seu projeto Supabase. **Atenção se você já tinha um banco de uma versão anterior**: esse script faz uma migração de dados (cria `aluno_professor`, `vocabulario`, `pagamentos`, adiciona `professor_id`/`aluno_id`, e faz backfill assumindo que só existe uma professora usando o banco até agora). Depois de rodar, abra cada aluno e confira se as aulas antigas ficaram vinculadas certinho (aba Aulas do perfil) - aulas de turmas com mais de um aluno não dá pra migrar automaticamente.
 
 3. Crie os usuários **professora** em **Authentication → Users** no painel do Supabase (continua sem cadastro público pra professora). Alunos se cadastram sozinhos pelo próprio app, em `/cadastro`.
 
