@@ -273,6 +273,50 @@ $$;
 
 grant execute on function public.vincular_aluno_por_email(uuid, text) to authenticated;
 
+-- Chamada pela professora ao clicar em "Vincular" no e-mail do aluno: salva
+-- o e-mail e já tenta achar a conta agora (em vez de só esperar o próximo
+-- login do aluno pra rodar vincular_conta_aluno). Retorna 'vinculado',
+-- 'nao_encontrado' (a pessoa ainda não criou a conta - o vínculo ainda
+-- acontece sozinho quando ela criar) ou 'sem_email'.
+create or replace function public.vincular_conta_aluno_por_professora(
+  p_aluno_id uuid,
+  p_email text
+)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_email text := nullif(trim(p_email), '');
+  v_user_id uuid;
+begin
+  if not exists (
+    select 1 from public.aluno_professor
+    where aluno_id = p_aluno_id and professor_id = auth.uid()
+  ) then
+    raise exception 'Você não tem acesso a este aluno';
+  end if;
+
+  update public.alunos set email = v_email where id = p_aluno_id;
+
+  if v_email is null then
+    return 'sem_email';
+  end if;
+
+  select id into v_user_id from auth.users where lower(email) = lower(v_email) limit 1;
+
+  if v_user_id is null then
+    return 'nao_encontrado';
+  end if;
+
+  update public.alunos set user_id = v_user_id where id = p_aluno_id;
+  return 'vinculado';
+end;
+$$;
+
+grant execute on function public.vincular_conta_aluno_por_professora(uuid, text) to authenticated;
+
 -- Chamada pela própria conta de aluno logo depois do cadastro: acha todo
 -- registro de aluno (de qualquer professora) com o mesmo e-mail dessa conta
 -- e ainda sem user_id, e vincula. Pode linkar mais de uma linha (a mesma

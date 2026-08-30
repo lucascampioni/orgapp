@@ -169,6 +169,29 @@ export default function Dashboard({
     return null;
   }
 
+  async function vincularContaAluno(alunoId: string, email: string) {
+    const { data, error } = await supabase.rpc("vincular_conta_aluno_por_professora", {
+      p_aluno_id: alunoId,
+      p_email: email,
+    });
+    if (error) {
+      return { status: "erro" as const, mensagem: error.message };
+    }
+    if (data === "vinculado") {
+      const { data: atualizado } = await supabase
+        .from("alunos")
+        .select("*")
+        .eq("id", alunoId)
+        .single();
+      if (atualizado) {
+        setAlunos((prev) => prev.map((a) => (a.id === alunoId ? (atualizado as Aluno) : a)));
+      }
+    } else {
+      setAlunos((prev) => prev.map((a) => (a.id === alunoId ? { ...a, email } : a)));
+    }
+    return { status: data as "vinculado" | "nao_encontrado" | "sem_email", mensagem: null };
+  }
+
   // ---------- Aulas ----------
 
   async function addAula(
@@ -492,6 +515,7 @@ export default function Dashboard({
             setOpenAlunoId(null);
           }}
           onCompartilhar={(email) => vincularAlunoPorEmail(openAluno.id, email)}
+          onVincularConta={(email) => vincularContaAluno(openAluno.id, email)}
           onAddAula={(titulo, data) => addAula(openAluno.id, null, titulo, data)}
           onOpenAula={(id) => {
             setOpenAlunoId(null);
@@ -816,6 +840,11 @@ function NovaTurmaForm({
 
 type AlunoSubTab = "geral" | "aulas" | "vocabulario" | "pagamentos";
 
+type VincularContaResultado = {
+  status: "vinculado" | "nao_encontrado" | "sem_email" | "erro";
+  mensagem: string | null;
+};
+
 function AlunoModal({
   aluno,
   vinculo,
@@ -829,6 +858,7 @@ function AlunoModal({
   onUpdateTurma,
   onDesvincular,
   onCompartilhar,
+  onVincularConta,
   onAddAula,
   onOpenAula,
   onAddVocabulario,
@@ -851,6 +881,7 @@ function AlunoModal({
   onUpdateTurma: (turmaId: string | null) => void;
   onDesvincular: () => void;
   onCompartilhar: (email: string) => Promise<string | null>;
+  onVincularConta: (email: string) => Promise<VincularContaResultado>;
   onAddAula: (titulo: string, data: string) => Promise<void>;
   onOpenAula: (id: string) => void;
   onAddVocabulario: (termo: string, significado: string, exemplo: string) => Promise<void>;
@@ -921,6 +952,7 @@ function AlunoModal({
           onUpdateTurma={onUpdateTurma}
           onDesvincular={onDesvincular}
           onCompartilhar={onCompartilhar}
+          onVincularConta={onVincularConta}
         />
       )}
 
@@ -964,6 +996,7 @@ function AlunoGeral({
   onUpdateTurma,
   onDesvincular,
   onCompartilhar,
+  onVincularConta,
 }: {
   aluno: Aluno;
   vinculo: AlunoProfessor | null;
@@ -976,10 +1009,14 @@ function AlunoGeral({
   onUpdateTurma: (turmaId: string | null) => void;
   onDesvincular: () => void;
   onCompartilhar: (email: string) => Promise<string | null>;
+  onVincularConta: (email: string) => Promise<VincularContaResultado>;
 }) {
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [emailAluno, setEmailAluno] = useState(aluno.email ?? "");
+  const [vinculando, setVinculando] = useState(false);
+  const [msgVinculo, setMsgVinculo] = useState<string | null>(null);
 
   async function handleCompartilhar() {
     if (!email.trim()) return;
@@ -989,6 +1026,21 @@ function AlunoGeral({
     setSending(false);
     setMsg(erro ? erro : "Vínculo criado com sucesso.");
     if (!erro) setEmail("");
+  }
+
+  async function handleVincularConta() {
+    if (!emailAluno.trim()) return;
+    setVinculando(true);
+    setMsgVinculo(null);
+    const resultado = await onVincularConta(emailAluno.trim());
+    setVinculando(false);
+    setMsgVinculo(
+      resultado.status === "vinculado"
+        ? "Conta vinculada! As informações já aparecem pro aluno."
+        : resultado.status === "nao_encontrado"
+          ? "E-mail salvo. Essa pessoa ainda não criou a conta - o vínculo acontece sozinho assim que ela se cadastrar."
+          : resultado.mensagem ?? "Não foi possível vincular.",
+    );
   }
 
   return (
@@ -1022,13 +1074,23 @@ function AlunoGeral({
           </span>
         )}
       </label>
-      <input
-        type="email"
-        defaultValue={aluno.email ?? ""}
-        onBlur={(e) => onUpdateAluno({ email: e.target.value.trim() || null })}
-        placeholder="usado pra linkar quando o aluno criar a própria conta"
-        className={`mb-3 ${inputClass}`}
-      />
+      <div className="mb-1 flex flex-wrap gap-2">
+        <input
+          type="email"
+          value={emailAluno}
+          onChange={(e) => setEmailAluno(e.target.value)}
+          placeholder="e-mail que o aluno vai usar pra criar a conta"
+          className={`min-w-[180px] flex-1 ${inputClass}`}
+        />
+        <button
+          onClick={handleVincularConta}
+          disabled={vinculando || !emailAluno.trim()}
+          className={secondaryButtonClass}
+        >
+          {vinculando ? "Vinculando..." : "Vincular"}
+        </button>
+      </div>
+      <div className="mb-3 text-xs text-muted">{msgVinculo}</div>
 
       <label className={labelClass}>Turma</label>
       <select
