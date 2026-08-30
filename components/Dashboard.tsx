@@ -1066,31 +1066,33 @@ function AlunoGeral({
         className={`mb-3 ${inputClass}`}
       />
 
-      <label className={labelClass}>
-        E-mail do aluno
-        {aluno.user_id && (
-          <span className="ml-2 rounded-full border border-success px-1.5 py-0.5 text-[10px] font-normal text-success">
-            conta vinculada
-          </span>
-        )}
-      </label>
-      <div className="mb-1 flex flex-wrap gap-2">
-        <input
-          type="email"
-          value={emailAluno}
-          onChange={(e) => setEmailAluno(e.target.value)}
-          placeholder="e-mail que o aluno vai usar pra criar a conta"
-          className={`min-w-[180px] flex-1 ${inputClass}`}
-        />
-        <button
-          onClick={handleVincularConta}
-          disabled={vinculando || !emailAluno.trim()}
-          className={secondaryButtonClass}
-        >
-          {vinculando ? "Vinculando..." : "Vincular"}
-        </button>
+      <div className="mb-3 rounded-lg border border-border bg-surface-2 p-3">
+        <div className="mb-2 text-xs font-medium text-muted">
+          E-mail do aluno
+          {aluno.user_id && (
+            <span className="ml-2 rounded-full border border-success px-1.5 py-0.5 text-[10px] font-normal text-success">
+              conta vinculada
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="email"
+            value={emailAluno}
+            onChange={(e) => setEmailAluno(e.target.value)}
+            placeholder="e-mail que o aluno vai usar pra criar a conta"
+            className={`min-w-[180px] flex-1 ${inputClass}`}
+          />
+          <button
+            onClick={handleVincularConta}
+            disabled={vinculando || !emailAluno.trim()}
+            className={secondaryButtonClass}
+          >
+            {vinculando ? "Vinculando..." : "Vincular"}
+          </button>
+        </div>
+        {msgVinculo && <div className="mt-2 text-xs text-muted">{msgVinculo}</div>}
       </div>
-      <div className="mb-3 text-xs text-muted">{msgVinculo}</div>
 
       <label className={labelClass}>Turma</label>
       <select
@@ -1128,7 +1130,7 @@ function AlunoGeral({
             className={`min-w-[180px] flex-1 ${inputClass}`}
           />
           <button onClick={handleCompartilhar} disabled={sending} className={secondaryButtonClass}>
-            {sending ? "Enviando..." : "Vincular"}
+            {sending ? "Enviando..." : "Compartilhar"}
           </button>
         </div>
         {msg && <div className="mt-2 text-xs text-muted">{msg}</div>}
