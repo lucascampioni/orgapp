@@ -55,32 +55,17 @@ export default async function Home() {
     );
   }
 
-  const [
-    { data: turmas },
-    { data: alunos },
-    { data: alunoProfessor },
-    { data: aulas },
-    { data: tarefasAula },
-    { data: vocabulario },
-    { data: pagamentos },
-  ] = await Promise.all([
-    supabase.from("turmas").select("*").order("nome", { ascending: true }),
-    supabase.from("alunos").select("*").order("nome", { ascending: true }),
-    supabase.from("aluno_professor").select("*"),
-    supabase.from("aulas").select("*").order("data", { ascending: true }),
-    supabase
-      .from("tarefas_aula")
-      .select("*")
-      .order("criado_em", { ascending: true }),
-    supabase
-      .from("vocabulario")
-      .select("*")
-      .order("criado_em", { ascending: false }),
-    supabase
-      .from("pagamentos")
-      .select("*")
-      .order("vencimento", { ascending: true }),
-  ]);
+  const [{ data: turmas }, { data: alunos }, { data: alunoProfessor }, { data: aulas }, { data: tarefasAula }] =
+    await Promise.all([
+      supabase.from("turmas").select("*").order("nome", { ascending: true }),
+      supabase.from("alunos").select("*").order("nome", { ascending: true }),
+      supabase.from("aluno_professor").select("*"),
+      supabase.from("aulas").select("*").order("data", { ascending: true }),
+      supabase
+        .from("tarefas_aula")
+        .select("*")
+        .order("criado_em", { ascending: true }),
+    ]);
 
   return (
     <Dashboard
@@ -89,8 +74,6 @@ export default async function Home() {
       initialAlunoProfessor={(alunoProfessor as AlunoProfessor[]) ?? []}
       initialAulas={(aulas as Aula[]) ?? []}
       initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
-      initialVocabulario={(vocabulario as Vocabulario[]) ?? []}
-      initialPagamentos={(pagamentos as Pagamento[]) ?? []}
       userEmail={user.email ?? ""}
     />
   );
