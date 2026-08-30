@@ -15,7 +15,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 2. Rode `supabase/schema.sql` no SQL Editor do seu projeto Supabase. **Atenção se você já tinha um banco de uma versão anterior**: esse script faz uma migração de dados (cria `aluno_professor`, `vocabulario`, `pagamentos`, adiciona `professor_id`/`aluno_id`, e faz backfill assumindo que só existe uma professora usando o banco até agora). Depois de rodar, confira se as aulas antigas ficaram com o aluno certo em "Planejador de Aulas" - aulas de turmas com mais de um aluno não dá pra migrar automaticamente.
 
-3. Crie os usuários que poderão logar em **Authentication → Users** no painel do Supabase (não há cadastro público pelo app).
+3. Crie os usuários **professora** em **Authentication → Users** no painel do Supabase (continua sem cadastro público pra professora). Alunos se cadastram sozinhos pelo próprio app, em `/cadastro`.
+
+### Cadastro de alunos
+
+Em `/cadastro`, quem escolhe "Sou aluno(a)" cria a própria conta (nome, e-mail, senha). O vínculo com o cadastro que a professora já fez desse aluno (nome/observações) acontece automaticamente comparando e-mails - a professora precisa ter preenchido o campo "E-mail do aluno" no perfil dele (aba Visão geral) com o mesmo e-mail que o aluno vai usar pra criar a conta. A conta do aluno só enxerga (e, no caso de tarefas, só marca como concluída) o que já existe - não edita cadastro, aulas ou pagamentos.
+
+Se o seu projeto Supabase tiver "Confirm email" ativado (Authentication → Providers → Email), o aluno recebe um e-mail de confirmação antes de conseguir entrar - confira em **Authentication → URL Configuration** se o **Site URL** aponta pra sua URL de produção (não `localhost`), senão o link do e-mail leva pro lugar errado.
 
 ### Gravação e resumo de aulas com IA (opcional)
 

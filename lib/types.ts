@@ -12,6 +12,8 @@ export interface Aluno {
   id: string;
   nome: string;
   contato: string | null;
+  email: string | null;
+  user_id: string | null;
   observacoes: string | null;
   criado_em: string;
 }

@@ -178,6 +178,12 @@ alter table public.materiais alter column professor_id set not null;
 alter table public.aulas alter column professor_id set not null;
 alter table public.alunos drop column if exists turma_id;
 
+-- E-mail cadastrado pela professora (usado só pra linkar automaticamente
+-- quando essa pessoa criar sua própria conta de aluno) e o id da conta de
+-- fato, depois que ela existe.
+alter table public.alunos add column if not exists email text;
+alter table public.alunos add column if not exists user_id uuid references auth.users(id) on delete set null;
+
 -- ---------------------------------------------------------------------
 -- Funções (SECURITY DEFINER só pra atravessar o "ovo e a galinha" de criar
 -- um aluno + seu vínculo, ou compartilhar um aluno com outra professora sem
@@ -188,7 +194,8 @@ create or replace function public.criar_aluno(
   p_nome text,
   p_contato text default null,
   p_observacoes text default null,
-  p_turma_id uuid default null
+  p_turma_id uuid default null,
+  p_email text default null
 )
 returns public.alunos
 language plpgsql
@@ -198,8 +205,13 @@ as $$
 declare
   novo_aluno public.alunos;
 begin
-  insert into public.alunos (nome, contato, observacoes)
-  values (p_nome, nullif(trim(coalesce(p_contato, '')), ''), nullif(trim(coalesce(p_observacoes, '')), ''))
+  insert into public.alunos (nome, contato, observacoes, email)
+  values (
+    p_nome,
+    nullif(trim(coalesce(p_contato, '')), ''),
+    nullif(trim(coalesce(p_observacoes, '')), ''),
+    nullif(trim(coalesce(p_email, '')), '')
+  )
   returning * into novo_aluno;
 
   insert into public.aluno_professor (aluno_id, professor_id, turma_id)
@@ -209,7 +221,11 @@ begin
 end;
 $$;
 
-grant execute on function public.criar_aluno(text, text, text, uuid) to authenticated;
+-- versão anterior (sem p_email) fica órfã se não for removida - o
+-- "create or replace" acima não substitui porque a assinatura mudou.
+drop function if exists public.criar_aluno(text, text, text, uuid);
+
+grant execute on function public.criar_aluno(text, text, text, uuid, text) to authenticated;
 
 create or replace function public.vincular_aluno_por_email(
   p_aluno_id uuid,
@@ -246,11 +262,45 @@ $$;
 
 grant execute on function public.vincular_aluno_por_email(uuid, text) to authenticated;
 
+-- Chamada pela própria conta de aluno logo depois do cadastro: acha todo
+-- registro de aluno (de qualquer professora) com o mesmo e-mail dessa conta
+-- e ainda sem user_id, e vincula. Pode linkar mais de uma linha (a mesma
+-- pessoa pode ter sido cadastrada, com o mesmo e-mail, por professoras
+-- diferentes que não se conhecem) - é intencional.
+create or replace function public.vincular_conta_aluno()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_email text;
+  v_count integer;
+begin
+  select email into v_email from auth.users where id = auth.uid();
+  if v_email is null then
+    return 0;
+  end if;
+
+  update public.alunos
+  set user_id = auth.uid()
+  where user_id is null and email is not null and lower(email) = lower(v_email);
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+grant execute on function public.vincular_conta_aluno() to authenticated;
+
 -- ---------------------------------------------------------------------
 -- RLS: cada professora só vê o que é dela. alunos são a exceção parcial -
 -- visíveis pra qualquer professora vinculada via aluno_professor, mas só
 -- criáveis pela função criar_aluno acima (por isso não tem policy de
--- insert nessa tabela).
+-- insert nessa tabela). Cada aluno logado (alunos.user_id = auth.uid())
+-- também enxerga (e, no caso de tarefas, edita a conclusão) o que é dele -
+-- essas policies de leitura do aluno se somam às da professora, nunca
+-- substituem.
 -- ---------------------------------------------------------------------
 
 alter table public.turmas enable row level security;
@@ -272,10 +322,13 @@ create policy "aluno_professor_all_own" on public.aluno_professor for all to aut
 
 drop policy if exists "alunos_select_vinculado" on public.alunos;
 create policy "alunos_select_vinculado" on public.alunos for select to authenticated
-  using (exists (
-    select 1 from public.aluno_professor ap
-    where ap.aluno_id = alunos.id and ap.professor_id = auth.uid()
-  ));
+  using (
+    exists (
+      select 1 from public.aluno_professor ap
+      where ap.aluno_id = alunos.id and ap.professor_id = auth.uid()
+    )
+    or alunos.user_id = auth.uid()
+  );
 
 drop policy if exists "alunos_update_vinculado" on public.alunos;
 create policy "alunos_update_vinculado" on public.alunos for update to authenticated
@@ -312,3 +365,48 @@ create policy "pagamentos_all_own" on public.pagamentos for all to authenticated
 drop policy if exists "materiais_all_own" on public.materiais;
 create policy "materiais_all_own" on public.materiais for all to authenticated
   using (professor_id = auth.uid()) with check (professor_id = auth.uid());
+
+-- ---------------------------------------------------------------------
+-- RLS adicional pro aluno logado (soma às policies das professoras acima -
+-- nunca substitui). Só leitura, exceto tarefas_aula, onde o aluno pode
+-- marcar a própria tarefa como concluída.
+-- ---------------------------------------------------------------------
+
+drop policy if exists "aulas_select_aluno" on public.aulas;
+create policy "aulas_select_aluno" on public.aulas for select to authenticated
+  using (exists (
+    select 1 from public.alunos a where a.id = aulas.aluno_id and a.user_id = auth.uid()
+  ));
+
+drop policy if exists "tarefas_aula_select_aluno" on public.tarefas_aula;
+create policy "tarefas_aula_select_aluno" on public.tarefas_aula for select to authenticated
+  using (exists (
+    select 1 from public.aulas au
+    join public.alunos a on a.id = au.aluno_id
+    where au.id = tarefas_aula.aula_id and a.user_id = auth.uid()
+  ));
+
+drop policy if exists "tarefas_aula_update_aluno" on public.tarefas_aula;
+create policy "tarefas_aula_update_aluno" on public.tarefas_aula for update to authenticated
+  using (exists (
+    select 1 from public.aulas au
+    join public.alunos a on a.id = au.aluno_id
+    where au.id = tarefas_aula.aula_id and a.user_id = auth.uid()
+  ))
+  with check (exists (
+    select 1 from public.aulas au
+    join public.alunos a on a.id = au.aluno_id
+    where au.id = tarefas_aula.aula_id and a.user_id = auth.uid()
+  ));
+
+drop policy if exists "vocabulario_select_aluno" on public.vocabulario;
+create policy "vocabulario_select_aluno" on public.vocabulario for select to authenticated
+  using (exists (
+    select 1 from public.alunos a where a.id = vocabulario.aluno_id and a.user_id = auth.uid()
+  ));
+
+drop policy if exists "pagamentos_select_aluno" on public.pagamentos;
+create policy "pagamentos_select_aluno" on public.pagamentos for select to authenticated
+  using (exists (
+    select 1 from public.alunos a where a.id = pagamentos.aluno_id and a.user_id = auth.uid()
+  ));

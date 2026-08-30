@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/Logo";
 
@@ -76,6 +77,13 @@ export default function LoginForm() {
       >
         {loading ? "Entrando..." : "Entrar"}
       </button>
+
+      <div className="mt-4 text-center text-xs text-muted">
+        Ainda não tem conta?{" "}
+        <Link href="/cadastro" className="text-brand hover:underline">
+          Criar conta
+        </Link>
+      </div>
     </form>
   );
 }

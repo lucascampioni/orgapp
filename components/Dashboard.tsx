@@ -116,7 +116,7 @@ export default function Dashboard({
 
   async function updateAluno(
     id: string,
-    fields: Partial<Pick<Aluno, "contato" | "observacoes" | "nome">>,
+    fields: Partial<Pick<Aluno, "contato" | "observacoes" | "nome" | "email">>,
   ) {
     const prevAlunos = alunos;
     setAlunos((prev) => prev.map((a) => (a.id === id ? { ...a, ...fields } : a)));
@@ -845,7 +845,9 @@ function AlunoModal({
   vocabulario: Vocabulario[];
   pagamentos: Pagamento[];
   onClose: () => void;
-  onUpdateAluno: (fields: Partial<Pick<Aluno, "contato" | "observacoes" | "nome">>) => void;
+  onUpdateAluno: (
+    fields: Partial<Pick<Aluno, "contato" | "observacoes" | "nome" | "email">>,
+  ) => void;
   onUpdateTurma: (turmaId: string | null) => void;
   onDesvincular: () => void;
   onCompartilhar: (email: string) => Promise<string | null>;
@@ -968,7 +970,9 @@ function AlunoGeral({
   turmas: Turma[];
   proximaAula: Aula | null;
   pendencias: number;
-  onUpdateAluno: (fields: Partial<Pick<Aluno, "contato" | "observacoes">>) => void;
+  onUpdateAluno: (
+    fields: Partial<Pick<Aluno, "contato" | "observacoes" | "email">>,
+  ) => void;
   onUpdateTurma: (turmaId: string | null) => void;
   onDesvincular: () => void;
   onCompartilhar: (email: string) => Promise<string | null>;
@@ -1006,7 +1010,23 @@ function AlunoGeral({
       <input
         defaultValue={aluno.contato ?? ""}
         onBlur={(e) => onUpdateAluno({ contato: e.target.value.trim() || null })}
-        placeholder="Telefone, e-mail..."
+        placeholder="Telefone, WhatsApp..."
+        className={`mb-3 ${inputClass}`}
+      />
+
+      <label className={labelClass}>
+        E-mail do aluno
+        {aluno.user_id && (
+          <span className="ml-2 rounded-full border border-success px-1.5 py-0.5 text-[10px] font-normal text-success">
+            conta vinculada
+          </span>
+        )}
+      </label>
+      <input
+        type="email"
+        defaultValue={aluno.email ?? ""}
+        onBlur={(e) => onUpdateAluno({ email: e.target.value.trim() || null })}
+        placeholder="usado pra linkar quando o aluno criar a própria conta"
         className={`mb-3 ${inputClass}`}
       />
 
