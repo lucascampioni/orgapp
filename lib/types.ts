@@ -1,5 +1,25 @@
 export type Nivel = "iniciante" | "basico" | "intermediario" | "avancado";
 
+export type NivelCefr = "a1" | "a2" | "b1" | "b2" | "c1" | "c2";
+
+export type ObjetivoAluno =
+  | "conversacao"
+  | "business"
+  | "viagem"
+  | "entrevista"
+  | "academico"
+  | "certificacao"
+  | "trabalho"
+  | "fluencia"
+  | "outro";
+
+export type CategoriaErro =
+  | "grammar"
+  | "vocabulary"
+  | "pronunciation"
+  | "word_choice"
+  | "fluency";
+
 export interface Turma {
   id: string;
   nome: string;
@@ -15,6 +35,10 @@ export interface Aluno {
   email: string | null;
   user_id: string | null;
   observacoes: string | null;
+  nivel_cefr: NivelCefr | null;
+  objetivo: ObjetivoAluno | null;
+  pontos_fortes: string | null;
+  pontos_desenvolver: string | null;
   criado_em: string;
 }
 
@@ -40,6 +64,21 @@ export interface Aula {
   meet_link: string | null;
   resumo_ia: string | null;
   recall_bot_id: string | null;
+  topicos: string[] | null;
+  pontos_positivos: string[] | null;
+  pontos_melhorar: string[] | null;
+  sugestao_ia: string | null;
+  criado_em: string;
+}
+
+export interface ErroAula {
+  id: string;
+  aula_id: string;
+  aluno_id: string;
+  frase_original: string;
+  correcao: string | null;
+  explicacao: string | null;
+  categoria: CategoriaErro | null;
   criado_em: string;
 }
 

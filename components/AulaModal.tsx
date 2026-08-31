@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Aluno, Aula, AulaStatus, TarefaAula, Turma, Vocabulario } from "@/lib/types";
+import type { Aluno, Aula, AulaStatus, ErroAula, TarefaAula, Turma, Vocabulario } from "@/lib/types";
 import {
   ModalShell,
   dangerLinkClass,
@@ -10,6 +10,7 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from "@/components/ui";
+import { CATEGORIA_ERRO_LABEL } from "@/lib/erros";
 
 export default function AulaModal({
   aula,
@@ -17,6 +18,7 @@ export default function AulaModal({
   turmas,
   tarefas,
   vocabulario,
+  erros,
   onClose,
   onSave,
   onIniciarGravacao,
@@ -30,6 +32,7 @@ export default function AulaModal({
   turmas: Turma[];
   tarefas: TarefaAula[];
   vocabulario: Vocabulario[];
+  erros: ErroAula[];
   onClose: () => void;
   onSave: (fields: Partial<Aula>) => Promise<void>;
   onIniciarGravacao: () => Promise<string | null>;
@@ -211,6 +214,77 @@ export default function AulaModal({
         {aula.resumo_ia && (
           <div className="mb-3 rounded-lg border border-border bg-surface-2 p-3 text-sm text-ink">
             {aula.resumo_ia}
+          </div>
+        )}
+
+        {aula.topicos && aula.topicos.length > 0 && (
+          <div className="mb-3">
+            <div className="mb-1.5 text-xs font-medium text-muted">Tópicos abordados</div>
+            <div className="flex flex-wrap gap-1.5">
+              {aula.topicos.map((topico) => (
+                <span
+                  key={topico}
+                  className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted"
+                >
+                  {topico}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {erros.length > 0 && (
+          <div className="mb-3">
+            <div className="mb-1.5 text-xs font-medium text-muted">Erros identificados</div>
+            <div className="flex flex-col gap-2">
+              {erros.map((e) => (
+                <div key={e.id} className="rounded-lg border border-border bg-surface-2 p-2.5">
+                  <div className="text-sm text-danger line-through">{e.frase_original}</div>
+                  {e.correcao && <div className="text-sm text-ink">{e.correcao}</div>}
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {e.categoria && (
+                      <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted">
+                        {CATEGORIA_ERRO_LABEL[e.categoria]}
+                      </span>
+                    )}
+                    {e.explicacao && <span className="text-xs text-muted">{e.explicacao}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {((aula.pontos_positivos && aula.pontos_positivos.length > 0) ||
+          (aula.pontos_melhorar && aula.pontos_melhorar.length > 0)) && (
+          <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {aula.pontos_positivos && aula.pontos_positivos.length > 0 && (
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-muted">Pontos positivos</div>
+                <ul className="list-inside list-disc text-sm text-ink">
+                  {aula.pontos_positivos.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {aula.pontos_melhorar && aula.pontos_melhorar.length > 0 && (
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-muted">Pontos a melhorar</div>
+                <ul className="list-inside list-disc text-sm text-ink">
+                  {aula.pontos_melhorar.map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {aula.sugestao_ia && (
+          <div className="mb-3 rounded-lg border border-brand/40 bg-surface-2 p-3 text-sm text-ink">
+            <span className="mr-1 text-xs font-medium text-brand">Sugestão da IA:</span>
+            {aula.sugestao_ia}
           </div>
         )}
 

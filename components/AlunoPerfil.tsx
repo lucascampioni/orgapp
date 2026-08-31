@@ -8,13 +8,12 @@ import type {
   Aluno,
   AlunoProfessor,
   Aula,
+  ErroAula,
   Pagamento,
   TarefaAula,
   Turma,
   Vocabulario,
 } from "@/lib/types";
-import LogoutButton from "@/components/LogoutButton";
-import Logo from "@/components/Logo";
 import AulaModal from "@/components/AulaModal";
 import {
   TabButton,
@@ -25,6 +24,8 @@ import {
   primaryButtonClass,
   secondaryButtonClass,
 } from "@/components/ui";
+import { NIVEIS_CEFR } from "@/lib/cefr";
+import { OBJETIVOS } from "@/lib/objetivos";
 
 type VincularContaResultado = {
   status: "vinculado" | "nao_encontrado" | "sem_email" | "erro";
@@ -41,6 +42,7 @@ export default function AlunoPerfil({
   initialTarefasAula,
   initialVocabulario,
   initialPagamentos,
+  initialErros,
 }: {
   aluno: Aluno;
   vinculo: AlunoProfessor | null;
@@ -49,6 +51,7 @@ export default function AlunoPerfil({
   initialTarefasAula: TarefaAula[];
   initialVocabulario: Vocabulario[];
   initialPagamentos: Pagamento[];
+  initialErros: ErroAula[];
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -59,10 +62,25 @@ export default function AlunoPerfil({
   const [tarefasAula, setTarefasAula] = useState<TarefaAula[]>(initialTarefasAula);
   const [vocabulario, setVocabulario] = useState<Vocabulario[]>(initialVocabulario);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>(initialPagamentos);
+  const [erros, setErros] = useState<ErroAula[]>(initialErros);
   const [sub, setSub] = useState<AlunoSubTab>("geral");
   const [openAulaId, setOpenAulaId] = useState<string | null>(null);
 
-  function updateAluno(fields: Partial<Pick<Aluno, "contato" | "observacoes" | "nome" | "email">>) {
+  function updateAluno(
+    fields: Partial<
+      Pick<
+        Aluno,
+        | "contato"
+        | "observacoes"
+        | "nome"
+        | "email"
+        | "nivel_cefr"
+        | "objetivo"
+        | "pontos_fortes"
+        | "pontos_desenvolver"
+      >
+    >,
+  ) {
     const prev = aluno;
     setAluno((cur) => ({ ...cur, ...fields }));
     supabase
@@ -96,7 +114,7 @@ export default function AlunoPerfil({
       console.error("Falha ao desvincular aluno", error);
       return;
     }
-    router.push("/");
+    router.push("/alunos");
     router.refresh();
   }
 
@@ -199,10 +217,11 @@ export default function AlunoPerfil({
   }
 
   async function refreshAula(aulaId: string) {
-    const [{ data: a }, { data: tarefas }, { data: vocab }] = await Promise.all([
+    const [{ data: a }, { data: tarefas }, { data: vocab }, { data: errosData }] = await Promise.all([
       supabase.from("aulas").select("*").eq("id", aulaId).single(),
       supabase.from("tarefas_aula").select("*").eq("aula_id", aulaId),
       supabase.from("vocabulario").select("*").eq("aula_id", aulaId),
+      supabase.from("erros_aula").select("*").eq("aula_id", aulaId),
     ]);
     if (a) setAulas((prev) => prev.map((x) => (x.id === aulaId ? (a as Aula) : x)));
     if (tarefas) {
@@ -215,6 +234,12 @@ export default function AlunoPerfil({
       setVocabulario((prev) => [
         ...prev.filter((v) => v.aula_id !== aulaId),
         ...(vocab as Vocabulario[]),
+      ]);
+    }
+    if (errosData) {
+      setErros((prev) => [
+        ...prev.filter((e) => e.aula_id !== aulaId),
+        ...(errosData as ErroAula[]),
       ]);
     }
   }
@@ -292,25 +317,32 @@ export default function AlunoPerfil({
   const openAula = aulas.find((a) => a.id === openAulaId) ?? null;
 
   return (
-    <div className="mx-auto max-w-[820px] px-6 py-7">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <Logo size="sm" />
-        <LogoutButton />
-      </header>
-
-      <Link href="/" className="mb-4 inline-block text-sm text-muted transition hover:text-ink">
+    <div>
+      <Link href="/alunos" className="mb-4 inline-block text-sm text-muted transition hover:text-ink">
         ← Voltar pros alunos
       </Link>
 
       <div className="mb-5">
-        <input
-          defaultValue={aluno.nome}
-          onBlur={(e) => {
-            const value = e.target.value.trim();
-            if (value && value !== aluno.nome) updateAluno({ nome: value });
-          }}
-          className="font-display -ml-1 rounded-lg border border-transparent bg-transparent px-1 text-2xl font-semibold text-ink outline-none focus:border-border focus:bg-surface-2"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            defaultValue={aluno.nome}
+            onBlur={(e) => {
+              const value = e.target.value.trim();
+              if (value && value !== aluno.nome) updateAluno({ nome: value });
+            }}
+            className="font-display -ml-1 rounded-lg border border-transparent bg-transparent px-1 text-2xl font-semibold text-ink outline-none focus:border-border focus:bg-surface-2"
+          />
+          {aluno.nivel_cefr && (
+            <span className="rounded-full border border-brand px-2 py-0.5 text-[11px] font-semibold uppercase text-brand">
+              {aluno.nivel_cefr}
+            </span>
+          )}
+          {aluno.objetivo && (
+            <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
+              {OBJETIVOS.find((o) => o.key === aluno.objetivo)?.label ?? aluno.objetivo}
+            </span>
+          )}
+        </div>
         {aluno.contato && <div className="mt-0.5 text-[13px] text-muted">{aluno.contato}</div>}
       </div>
 
@@ -382,6 +414,7 @@ export default function AlunoPerfil({
           turmas={turmas}
           tarefas={tarefasAula.filter((t) => t.aula_id === openAula.id)}
           vocabulario={vocabulario.filter((v) => v.aula_id === openAula.id)}
+          erros={erros.filter((e) => e.aula_id === openAula.id)}
           onClose={() => setOpenAulaId(null)}
           onSave={(fields) => updateAula(openAula.id, fields)}
           onIniciarGravacao={() => iniciarGravacao(openAula.id)}
@@ -415,7 +448,14 @@ function AlunoGeral({
   turmas: Turma[];
   proximaAula: Aula | null;
   pendencias: number;
-  onUpdateAluno: (fields: Partial<Pick<Aluno, "contato" | "observacoes">>) => void;
+  onUpdateAluno: (
+    fields: Partial<
+      Pick<
+        Aluno,
+        "contato" | "observacoes" | "nivel_cefr" | "objetivo" | "pontos_fortes" | "pontos_desenvolver"
+      >
+    >,
+  ) => void;
   onUpdateTurma: (turmaId: string | null) => void;
   onDesvincular: () => void;
   onCompartilhar: (email: string) => Promise<string | null>;
@@ -476,6 +516,39 @@ function AlunoGeral({
         className={`mb-3 ${inputClass}`}
       />
 
+      <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Nível (CEFR)</label>
+          <select
+            defaultValue={aluno.nivel_cefr ?? ""}
+            onChange={(e) => onUpdateAluno({ nivel_cefr: (e.target.value || null) as Aluno["nivel_cefr"] })}
+            className={inputClass}
+          >
+            <option value="">Não definido</option>
+            {NIVEIS_CEFR.map((n) => (
+              <option key={n.key} value={n.key}>
+                {n.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>Objetivo</label>
+          <select
+            defaultValue={aluno.objetivo ?? ""}
+            onChange={(e) => onUpdateAluno({ objetivo: (e.target.value || null) as Aluno["objetivo"] })}
+            className={inputClass}
+          >
+            <option value="">Não definido</option>
+            {OBJETIVOS.map((o) => (
+              <option key={o.key} value={o.key}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="mb-3 rounded-lg border border-border bg-surface-2 p-3">
         <div className="mb-2 text-xs font-medium text-muted">
           E-mail do aluno
@@ -524,8 +597,31 @@ function AlunoGeral({
         rows={4}
         onBlur={(e) => onUpdateAluno({ observacoes: e.target.value.trim() || null })}
         placeholder="Progresso, dificuldades, preferências..."
-        className={`mb-5 resize-none ${inputClass}`}
+        className={`mb-3 resize-none ${inputClass}`}
       />
+
+      <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Pontos fortes</label>
+          <textarea
+            defaultValue={aluno.pontos_fortes ?? ""}
+            rows={3}
+            onBlur={(e) => onUpdateAluno({ pontos_fortes: e.target.value.trim() || null })}
+            placeholder="Boa compreensão auditiva, bom vocabulário..."
+            className={`resize-none ${inputClass}`}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Pontos a desenvolver</label>
+          <textarea
+            defaultValue={aluno.pontos_desenvolver ?? ""}
+            rows={3}
+            onBlur={(e) => onUpdateAluno({ pontos_desenvolver: e.target.value.trim() || null })}
+            placeholder="Past Perfect, preposições, pronúncia do TH..."
+            className={`resize-none ${inputClass}`}
+          />
+        </div>
+      </div>
 
       <div className="mb-5 rounded-lg border border-border bg-surface-2 p-3">
         <div className="mb-2 text-xs font-medium text-muted">

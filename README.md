@@ -17,6 +17,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 3. Crie os usuários **professora** em **Authentication → Users** no painel do Supabase (continua sem cadastro público pra professora). Alunos se cadastram sozinhos pelo próprio app, em `/cadastro`.
 
+### Navegação
+
+A professora tem uma barra lateral (topo em telas pequenas) com três seções: **Dashboard** (visão geral com indicadores, próximas aulas, alunos recentes e insights heurísticos), **Alunos** (lista/cadastro) e **Tarefas** (todas as tarefas de todos os alunos, com filtro de pendentes/concluídas). O perfil de cada aluno agora também guarda nível de inglês (escala CEFR, A1-C2), objetivo de estudo, pontos fortes e pontos a desenvolver, editáveis na aba "Visão geral".
+
 ### Cadastro de alunos
 
 Em `/cadastro`, quem escolhe "Sou aluno(a)" cria a própria conta (nome, e-mail, senha). O vínculo com o cadastro que a professora já fez desse aluno (nome/observações) acontece automaticamente comparando e-mails - a professora precisa ter preenchido o campo "E-mail do aluno" no perfil dele (aba Visão geral) com o mesmo e-mail que o aluno vai usar pra criar a conta. A conta do aluno só enxerga (e, no caso de tarefas, só marca como concluída) o que já existe - não edita cadastro, aulas ou pagamentos.
@@ -25,7 +29,7 @@ Se o seu projeto Supabase tiver "Confirm email" ativado (Authentication → Prov
 
 ### Gravação e resumo de aulas com IA (opcional)
 
-Uma aula com um link do Google Meet cadastrado pode ter um bot (via [Recall.ai](https://recall.ai)) entrando pra gravar/transcrever, e a transcrição vira automaticamente um resumo + tarefas de acompanhamento + vocabulário novo identificado (tudo via API da Anthropic) na própria aula e no perfil do aluno. Isso é opcional — sem essas variáveis o resto do app funciona normalmente, só o botão "Iniciar gravação com IA" não funciona.
+Uma aula com um link do Google Meet cadastrado pode ter um bot (via [Recall.ai](https://recall.ai)) entrando pra gravar/transcrever, e a transcrição vira automaticamente resumo, tópicos abordados, erros do aluno (com correção e explicação), pontos positivos/a melhorar, uma sugestão pra próxima aula, tarefas de acompanhamento e vocabulário novo (tudo via API da Anthropic) na própria aula e no perfil do aluno. Isso é opcional — sem essas variáveis o resto do app funciona normalmente, só o botão "Iniciar gravação com IA" não funciona.
 
 Variáveis necessárias (`.env.local` e nas env vars da Vercel):
 

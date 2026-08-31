@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import ProfessorShell from "@/components/ProfessorShell";
 import AlunoPerfil from "@/components/AlunoPerfil";
 import type {
   Aluno,
   AlunoProfessor,
   Aula,
+  ErroAula,
   Pagamento,
   TarefaAula,
   Turma,
@@ -44,12 +46,12 @@ export default async function AlunoPage({
     ]);
 
   if (!aluno) {
-    redirect("/");
+    redirect("/alunos");
   }
 
   const aulaIds = (aulas ?? []).map((a) => a.id);
 
-  const [{ data: tarefasAula }, { data: vocabulario }, { data: pagamentos }] =
+  const [{ data: tarefasAula }, { data: vocabulario }, { data: pagamentos }, { data: erros }] =
     await Promise.all([
       aulaIds.length > 0
         ? supabase
@@ -68,17 +70,25 @@ export default async function AlunoPage({
         .select("*")
         .eq("aluno_id", id)
         .order("vencimento", { ascending: true }),
+      supabase
+        .from("erros_aula")
+        .select("*")
+        .eq("aluno_id", id)
+        .order("criado_em", { ascending: false }),
     ]);
 
   return (
-    <AlunoPerfil
-      aluno={aluno as Aluno}
-      vinculo={(vinculo as AlunoProfessor) ?? null}
-      turmas={(turmas as Turma[]) ?? []}
-      initialAulas={(aulas as Aula[]) ?? []}
-      initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
-      initialVocabulario={(vocabulario as Vocabulario[]) ?? []}
-      initialPagamentos={(pagamentos as Pagamento[]) ?? []}
-    />
+    <ProfessorShell userEmail={user.email ?? ""}>
+      <AlunoPerfil
+        aluno={aluno as Aluno}
+        vinculo={(vinculo as AlunoProfessor) ?? null}
+        turmas={(turmas as Turma[]) ?? []}
+        initialAulas={(aulas as Aula[]) ?? []}
+        initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
+        initialVocabulario={(vocabulario as Vocabulario[]) ?? []}
+        initialPagamentos={(pagamentos as Pagamento[]) ?? []}
+        initialErros={(erros as ErroAula[]) ?? []}
+      />
+    </ProfessorShell>
   );
 }

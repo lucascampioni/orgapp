@@ -5,24 +5,20 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { NIVEIS } from "@/lib/niveis";
 import type { Aluno, AlunoProfessor, Aula, Nivel, TarefaAula, Turma } from "@/lib/types";
-import LogoutButton from "@/components/LogoutButton";
-import Logo from "@/components/Logo";
 import { TabButton, hoje, inputClass, primaryButtonClass } from "@/components/ui";
 
-export default function Dashboard({
+export default function AlunosLista({
   initialTurmas,
   initialAlunos,
   initialAlunoProfessor,
   initialAulas,
   initialTarefasAula,
-  userEmail,
 }: {
   initialTurmas: Turma[];
   initialAlunos: Aluno[];
   initialAlunoProfessor: AlunoProfessor[];
   initialAulas: Aula[];
   initialTarefasAula: TarefaAula[];
-  userEmail: string;
 }) {
   const [turmas, setTurmas] = useState<Turma[]>(initialTurmas);
   const [alunos, setAlunos] = useState<Aluno[]>(initialAlunos);
@@ -76,46 +72,6 @@ export default function Dashboard({
     }
   }
 
-  return (
-    <div className="mx-auto max-w-[1200px] px-6 py-7">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Logo />
-          <div className="mt-1 text-[13px] text-muted">Logado como {userEmail}</div>
-        </div>
-        <LogoutButton />
-      </header>
-
-      <AlunosTab
-        alunos={alunos}
-        turmas={turmas}
-        vinculoPorAluno={vinculoPorAluno}
-        aulas={aulas}
-        tarefasAula={tarefasAula}
-        onAddAluno={addAluno}
-        onAddTurma={addTurma}
-      />
-    </div>
-  );
-}
-
-function AlunosTab({
-  alunos,
-  turmas,
-  vinculoPorAluno,
-  aulas,
-  tarefasAula,
-  onAddAluno,
-  onAddTurma,
-}: {
-  alunos: Aluno[];
-  turmas: Turma[];
-  vinculoPorAluno: Map<string, AlunoProfessor>;
-  aulas: Aula[];
-  tarefasAula: TarefaAula[];
-  onAddAluno: (nome: string, contato: string, turmaId: string | null) => Promise<void>;
-  onAddTurma: (nome: string, nivel: Nivel, horario: string) => Promise<void>;
-}) {
   const [nome, setNome] = useState("");
   const [contato, setContato] = useState("");
   const [turmaId, setTurmaId] = useState("");
@@ -126,7 +82,7 @@ function AlunosTab({
   async function handleAdd() {
     if (!nome.trim()) return;
     setSaving(true);
-    await onAddAluno(nome.trim(), contato, turmaId || null);
+    await addAluno(nome.trim(), contato, turmaId || null);
     setSaving(false);
     setNome("");
     setContato("");
@@ -141,6 +97,8 @@ function AlunosTab({
 
   return (
     <div>
+      <h1 className="mb-4 font-display text-2xl font-semibold text-ink">Alunos</h1>
+
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <TabButton
           active={filtroTurma === "all"}
@@ -166,7 +124,7 @@ function AlunosTab({
       {showNovaTurma && (
         <NovaTurmaForm
           onAdd={async (n, nv, h) => {
-            await onAddTurma(n, nv, h);
+            await addTurma(n, nv, h);
             setShowNovaTurma(false);
           }}
         />

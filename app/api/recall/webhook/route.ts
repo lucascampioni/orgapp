@@ -42,8 +42,62 @@ const SUMMARY_TOOL = {
         description:
           "Palavras ou expressões em inglês que ficam claramente sendo ensinadas/explicadas como vocabulário novo para o aluno nessa aula (ex: a professora traduz ou explica o significado de uma palavra). Não inclua palavras comuns já dominadas, só as que foram efetivamente ensinadas. Pode ser vazia.",
       },
+      topicos: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "3-6 tópicos/temas curtos abordados na aula (ex: 'Job Interview', 'Past Perfect', 'Travel vocabulary'). Pode ser vazia.",
+      },
+      erros: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            frase_original: {
+              type: "string",
+              description: "A frase exata (em inglês) que o aluno disse com o erro.",
+            },
+            correcao: { type: "string", description: "A versão corrigida da frase." },
+            explicacao: {
+              type: "string",
+              description: "Explicação curta e didática do erro, em português.",
+            },
+            categoria: {
+              type: "string",
+              enum: ["grammar", "vocabulary", "pronunciation", "word_choice", "fluency"],
+            },
+          },
+          required: ["frase_original", "categoria"],
+        },
+        description:
+          "Erros claros que o ALUNO (não a professora) cometeu ao falar inglês durante a aula. Só inclua erros que dá pra identificar com confiança pela transcrição. Pode ser vazia.",
+      },
+      pontos_positivos: {
+        type: "array",
+        items: { type: "string" },
+        description: "2-4 pontos fortes que o aluno demonstrou nessa aula. Pode ser vazia.",
+      },
+      pontos_melhorar: {
+        type: "array",
+        items: { type: "string" },
+        description: "2-4 pontos que o aluno ainda precisa desenvolver. Pode ser vazia.",
+      },
+      sugestao: {
+        type: "string",
+        description:
+          "Uma sugestão curta (1-2 frases) do que focar nas próximas aulas com esse aluno.",
+      },
     },
-    required: ["resumo", "tarefas", "vocabulario"],
+    required: [
+      "resumo",
+      "tarefas",
+      "vocabulario",
+      "topicos",
+      "erros",
+      "pontos_positivos",
+      "pontos_melhorar",
+      "sugestao",
+    ],
   },
 };
 
@@ -58,7 +112,7 @@ async function summarize(transcript: string) {
     messages: [
       {
         role: "user",
-        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, as tarefas de acompanhamento e o vocabulário novo ensinado usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
+        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, as tarefas de acompanhamento, o vocabulário novo ensinado, os tópicos abordados, os erros que o ALUNO cometeu ao falar inglês, os pontos positivos, os pontos a melhorar e uma sugestão pra próxima aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
       },
     ],
   });
@@ -72,6 +126,16 @@ async function summarize(transcript: string) {
     resumo: string;
     tarefas: string[];
     vocabulario: { termo: string; significado?: string; exemplo?: string }[];
+    topicos: string[];
+    erros: {
+      frase_original: string;
+      correcao?: string;
+      explicacao?: string;
+      categoria: "grammar" | "vocabulary" | "pronunciation" | "word_choice" | "fluency";
+    }[];
+    pontos_positivos: string[];
+    pontos_melhorar: string[];
+    sugestao: string;
   };
 }
 
@@ -147,11 +211,26 @@ async function handlePost(request: NextRequest) {
   let resumo: string;
   let tarefas: string[];
   let vocabulario: { termo: string; significado?: string; exemplo?: string }[];
+  let topicos: string[];
+  let erros: {
+    frase_original: string;
+    correcao?: string;
+    explicacao?: string;
+    categoria: "grammar" | "vocabulary" | "pronunciation" | "word_choice" | "fluency";
+  }[];
+  let pontosPositivos: string[];
+  let pontosMelhorar: string[];
+  let sugestao: string;
   try {
     const result = await summarize(transcript);
     resumo = result.resumo;
     tarefas = result.tarefas;
     vocabulario = result.vocabulario ?? [];
+    topicos = result.topicos ?? [];
+    erros = result.erros ?? [];
+    pontosPositivos = result.pontos_positivos ?? [];
+    pontosMelhorar = result.pontos_melhorar ?? [];
+    sugestao = result.sugestao ?? "";
   } catch (err) {
     console.error("Falha ao gerar resumo com IA", err);
     const detail = err instanceof Error ? err.message : String(err);
@@ -160,7 +239,13 @@ async function handlePost(request: NextRequest) {
 
   const { error: updateError } = await supabase
     .from("aulas")
-    .update({ resumo_ia: resumo })
+    .update({
+      resumo_ia: resumo,
+      topicos,
+      pontos_positivos: pontosPositivos,
+      pontos_melhorar: pontosMelhorar,
+      sugestao_ia: sugestao || null,
+    })
     .eq("id", aula.id);
 
   if (updateError) {
@@ -191,6 +276,23 @@ async function handlePost(request: NextRequest) {
     );
     if (vocabError) {
       console.error("Falha ao salvar vocabulario", vocabError);
+    }
+  }
+
+  if (erros.length > 0 && aula.aluno_id) {
+    const { error: errosError } = await supabase.from("erros_aula").insert(
+      erros.map((e) => ({
+        aluno_id: aula.aluno_id,
+        aula_id: aula.id,
+        professor_id: aula.professor_id,
+        frase_original: e.frase_original,
+        correcao: e.correcao ?? null,
+        explicacao: e.explicacao ?? null,
+        categoria: e.categoria,
+      })),
+    );
+    if (errosError) {
+      console.error("Falha ao salvar erros_aula", errosError);
     }
   }
 

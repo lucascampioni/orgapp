@@ -34,6 +34,20 @@ create table if not exists public.alunos (
   criado_em timestamptz not null default now()
 );
 
+-- Nível de inglês do aluno na escala CEFR (padrão do mercado), separado do
+-- nível "iniciante/basico/..." usado em turmas/materiais.
+alter table public.alunos add column if not exists nivel_cefr text check (
+  nivel_cefr in ('a1', 'a2', 'b1', 'b2', 'c1', 'c2')
+);
+alter table public.alunos add column if not exists objetivo text check (
+  objetivo in (
+    'conversacao', 'business', 'viagem', 'entrevista', 'academico',
+    'certificacao', 'trabalho', 'fluencia', 'outro'
+  )
+);
+alter table public.alunos add column if not exists pontos_fortes text;
+alter table public.alunos add column if not exists pontos_desenvolver text;
+
 -- Vínculo many-to-many entre aluno e professora. turma_id aqui (não em
 -- aluno) porque a mesma turma só faz sentido do ponto de vista de quem
 -- está dando a aula.
@@ -71,11 +85,33 @@ alter table public.aulas add column if not exists recall_bot_id text;
 alter table public.aulas add column if not exists professor_id uuid references auth.users(id) on delete cascade;
 alter table public.aulas add column if not exists aluno_id uuid references public.alunos(id) on delete cascade;
 
+-- Preenchidos automaticamente pela IA a partir da transcrição (ver
+-- app/api/recall/webhook). topicos/pontos_* são arrays de texto simples.
+alter table public.aulas add column if not exists topicos text[];
+alter table public.aulas add column if not exists pontos_positivos text[];
+alter table public.aulas add column if not exists pontos_melhorar text[];
+alter table public.aulas add column if not exists sugestao_ia text;
+
 create table if not exists public.tarefas_aula (
   id uuid primary key default gen_random_uuid(),
   aula_id uuid not null references public.aulas(id) on delete cascade,
   descricao text not null,
   concluida boolean not null default false,
+  criado_em timestamptz not null default now()
+);
+
+-- Erros identificados pela IA na transcrição da aula.
+create table if not exists public.erros_aula (
+  id uuid primary key default gen_random_uuid(),
+  aula_id uuid not null references public.aulas(id) on delete cascade,
+  aluno_id uuid not null references public.alunos(id) on delete cascade,
+  professor_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  frase_original text not null,
+  correcao text,
+  explicacao text,
+  categoria text check (
+    categoria in ('grammar', 'vocabulary', 'pronunciation', 'word_choice', 'fluency')
+  ),
   criado_em timestamptz not null default now()
 );
 
@@ -366,6 +402,7 @@ alter table public.tarefas_aula enable row level security;
 alter table public.vocabulario enable row level security;
 alter table public.pagamentos enable row level security;
 alter table public.materiais enable row level security;
+alter table public.erros_aula enable row level security;
 
 drop policy if exists "turmas_all_own" on public.turmas;
 create policy "turmas_all_own" on public.turmas for all to authenticated
@@ -421,6 +458,10 @@ drop policy if exists "materiais_all_own" on public.materiais;
 create policy "materiais_all_own" on public.materiais for all to authenticated
   using (professor_id = auth.uid()) with check (professor_id = auth.uid());
 
+drop policy if exists "erros_aula_all_own" on public.erros_aula;
+create policy "erros_aula_all_own" on public.erros_aula for all to authenticated
+  using (professor_id = auth.uid()) with check (professor_id = auth.uid());
+
 -- ---------------------------------------------------------------------
 -- RLS adicional pro aluno logado (soma às policies das professoras acima -
 -- nunca substitui). Só leitura, exceto tarefas_aula, onde o aluno pode
@@ -464,4 +505,10 @@ drop policy if exists "pagamentos_select_aluno" on public.pagamentos;
 create policy "pagamentos_select_aluno" on public.pagamentos for select to authenticated
   using (exists (
     select 1 from public.alunos a where a.id = pagamentos.aluno_id and a.user_id = auth.uid()
+  ));
+
+drop policy if exists "erros_aula_select_aluno" on public.erros_aula;
+create policy "erros_aula_select_aluno" on public.erros_aula for select to authenticated
+  using (exists (
+    select 1 from public.alunos a where a.id = erros_aula.aluno_id and a.user_id = auth.uid()
   ));

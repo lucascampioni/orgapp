@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import Dashboard from "@/components/Dashboard";
+import ProfessorShell from "@/components/ProfessorShell";
+import DashboardHome from "@/components/DashboardHome";
 import AlunoPortal from "@/components/AlunoPortal";
 import type {
   Aluno,
@@ -8,7 +9,6 @@ import type {
   Aula,
   Pagamento,
   TarefaAula,
-  Turma,
   Vocabulario,
 } from "@/lib/types";
 
@@ -55,26 +55,25 @@ export default async function Home() {
     );
   }
 
-  const [{ data: turmas }, { data: alunos }, { data: alunoProfessor }, { data: aulas }, { data: tarefasAula }] =
+  const [{ data: alunos }, { data: alunoProfessor }, { data: aulas }, { data: tarefasAula }, { data: vocabulario }] =
     await Promise.all([
-      supabase.from("turmas").select("*").order("nome", { ascending: true }),
-      supabase.from("alunos").select("*").order("nome", { ascending: true }),
+      supabase.from("alunos").select("*"),
       supabase.from("aluno_professor").select("*"),
-      supabase.from("aulas").select("*").order("data", { ascending: true }),
-      supabase
-        .from("tarefas_aula")
-        .select("*")
-        .order("criado_em", { ascending: true }),
+      supabase.from("aulas").select("*"),
+      supabase.from("tarefas_aula").select("*"),
+      supabase.from("vocabulario").select("*"),
     ]);
 
   return (
-    <Dashboard
-      initialTurmas={(turmas as Turma[]) ?? []}
-      initialAlunos={(alunos as Aluno[]) ?? []}
-      initialAlunoProfessor={(alunoProfessor as AlunoProfessor[]) ?? []}
-      initialAulas={(aulas as Aula[]) ?? []}
-      initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
-      userEmail={user.email ?? ""}
-    />
+    <ProfessorShell userEmail={user.email ?? ""}>
+      <DashboardHome
+        userEmail={user.email ?? ""}
+        alunos={(alunos as Aluno[]) ?? []}
+        alunoProfessor={(alunoProfessor as AlunoProfessor[]) ?? []}
+        aulas={(aulas as Aula[]) ?? []}
+        tarefasAula={(tarefasAula as TarefaAula[]) ?? []}
+        vocabulario={(vocabulario as Vocabulario[]) ?? []}
+      />
+    </ProfessorShell>
   );
 }
