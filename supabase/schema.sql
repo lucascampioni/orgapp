@@ -231,6 +231,22 @@ alter table public.alunos drop column if exists turma_id;
 alter table public.alunos add column if not exists email text;
 alter table public.alunos add column if not exists user_id uuid references auth.users(id) on delete set null;
 
+-- Um e-mail só pode estar vinculado a um aluno. Antes de criar o índice
+-- único, limpa duplicatas que já possam existir (mantém o e-mail só na
+-- linha mais antiga de cada grupo duplicado, zera nas demais).
+with duplicados as (
+  select id, row_number() over (partition by lower(email) order by criado_em asc) as rn
+  from public.alunos
+  where email is not null
+)
+update public.alunos a
+set email = null
+from duplicados d
+where a.id = d.id and d.rn > 1;
+
+create unique index if not exists alunos_email_unique_idx on public.alunos (lower(email))
+  where email is not null;
+
 -- ---------------------------------------------------------------------
 -- Funções (SECURITY DEFINER só pra atravessar o "ovo e a galinha" de criar
 -- um aluno + seu vínculo, ou compartilhar um aluno com outra professora sem
@@ -265,6 +281,9 @@ begin
   values (novo_aluno.id, auth.uid(), p_turma_id);
 
   return novo_aluno;
+exception
+  when unique_violation then
+    raise exception 'Esse e-mail já está vinculado a outro aluno';
 end;
 $$;
 
@@ -313,7 +332,8 @@ grant execute on function public.vincular_aluno_por_email(uuid, text) to authent
 -- o e-mail e já tenta achar a conta agora (em vez de só esperar o próximo
 -- login do aluno pra rodar vincular_conta_aluno). Retorna 'vinculado',
 -- 'nao_encontrado' (a pessoa ainda não criou a conta - o vínculo ainda
--- acontece sozinho quando ela criar) ou 'sem_email'.
+-- acontece sozinho quando ela criar), 'sem_email' ou 'email_em_uso' (já
+-- pertence a outro aluno - um e-mail só pode estar vinculado a um aluno).
 create or replace function public.vincular_conta_aluno_por_professora(
   p_aluno_id uuid,
   p_email text
@@ -334,7 +354,12 @@ begin
     raise exception 'Você não tem acesso a este aluno';
   end if;
 
-  update public.alunos set email = v_email where id = p_aluno_id;
+  begin
+    update public.alunos set email = v_email where id = p_aluno_id;
+  exception
+    when unique_violation then
+      return 'email_em_uso';
+  end;
 
   if v_email is null then
     return 'sem_email';
@@ -353,11 +378,10 @@ $$;
 
 grant execute on function public.vincular_conta_aluno_por_professora(uuid, text) to authenticated;
 
--- Chamada pela própria conta de aluno logo depois do cadastro: acha todo
--- registro de aluno (de qualquer professora) com o mesmo e-mail dessa conta
--- e ainda sem user_id, e vincula. Pode linkar mais de uma linha (a mesma
--- pessoa pode ter sido cadastrada, com o mesmo e-mail, por professoras
--- diferentes que não se conhecem) - é intencional.
+-- Chamada pela própria conta de aluno logo depois do cadastro: acha o
+-- registro de aluno com o mesmo e-mail dessa conta e ainda sem user_id, e
+-- vincula. Como um e-mail só pode estar em um aluno (índice único acima),
+-- isso nunca linka mais de uma linha.
 create or replace function public.vincular_conta_aluno()
 returns integer
 language plpgsql
