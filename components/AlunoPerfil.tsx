@@ -28,7 +28,7 @@ import { NIVEIS_CEFR } from "@/lib/cefr";
 import { OBJETIVOS } from "@/lib/objetivos";
 
 type VincularContaResultado = {
-  status: "vinculado" | "nao_encontrado" | "sem_email" | "email_em_uso" | "erro";
+  status: "vinculado" | "nao_encontrado" | "sem_email" | "email_em_uso" | "conta_em_uso" | "erro";
   mensagem: string | null;
 };
 
@@ -145,7 +145,7 @@ export default function AlunoPerfil({
       setAluno((cur) => ({ ...cur, email }));
     }
     return {
-      status: data as "vinculado" | "nao_encontrado" | "sem_email" | "email_em_uso",
+      status: data as "vinculado" | "nao_encontrado" | "sem_email" | "email_em_uso" | "conta_em_uso",
       mensagem: null,
     };
   }
@@ -494,7 +494,9 @@ function AlunoGeral({
           ? "E-mail salvo. Essa pessoa ainda não criou a conta - o vínculo acontece sozinho assim que ela se cadastrar."
           : resultado.status === "email_em_uso"
             ? "Esse e-mail já está vinculado a outro aluno."
-            : resultado.mensagem ?? "Não foi possível vincular.",
+            : resultado.status === "conta_em_uso"
+              ? "E-mail salvo, mas essa conta já está vinculada a outro cadastro de aluno."
+              : resultado.mensagem ?? "Não foi possível vincular.",
     );
   }
 

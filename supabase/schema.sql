@@ -247,6 +247,27 @@ where a.id = d.id and d.rn > 1;
 create unique index if not exists alunos_email_unique_idx on public.alunos (lower(email))
   where email is not null;
 
+-- Da mesma forma, uma conta de aluno (user_id) só pode estar vinculada a um
+-- cadastro. Isso pode já ter ficado inconsistente antes desse índice
+-- existir (ex: a mesma conta linkada em vários cadastros de teste com o
+-- mesmo e-mail, quando isso ainda era permitido) - limpa mantendo o
+-- vínculo só na linha que ainda tem o e-mail batendo (ou a mais antiga).
+with duplicados_conta as (
+  select id, row_number() over (
+    partition by user_id
+    order by (email is not null) desc, criado_em asc
+  ) as rn
+  from public.alunos
+  where user_id is not null
+)
+update public.alunos a
+set user_id = null
+from duplicados_conta d
+where a.id = d.id and d.rn > 1;
+
+create unique index if not exists alunos_user_id_unique_idx on public.alunos (user_id)
+  where user_id is not null;
+
 -- ---------------------------------------------------------------------
 -- Funções (SECURITY DEFINER só pra atravessar o "ovo e a galinha" de criar
 -- um aluno + seu vínculo, ou compartilhar um aluno com outra professora sem
@@ -332,8 +353,9 @@ grant execute on function public.vincular_aluno_por_email(uuid, text) to authent
 -- o e-mail e já tenta achar a conta agora (em vez de só esperar o próximo
 -- login do aluno pra rodar vincular_conta_aluno). Retorna 'vinculado',
 -- 'nao_encontrado' (a pessoa ainda não criou a conta - o vínculo ainda
--- acontece sozinho quando ela criar), 'sem_email' ou 'email_em_uso' (já
--- pertence a outro aluno - um e-mail só pode estar vinculado a um aluno).
+-- acontece sozinho quando ela criar), 'sem_email', 'email_em_uso' (o
+-- e-mail já pertence a outro aluno) ou 'conta_em_uso' (essa conta de aluno
+-- já está vinculada a outro cadastro - uma conta só pode ser um aluno).
 create or replace function public.vincular_conta_aluno_por_professora(
   p_aluno_id uuid,
   p_email text
@@ -371,7 +393,13 @@ begin
     return 'nao_encontrado';
   end if;
 
-  update public.alunos set user_id = v_user_id where id = p_aluno_id;
+  begin
+    update public.alunos set user_id = v_user_id where id = p_aluno_id;
+  exception
+    when unique_violation then
+      return 'conta_em_uso';
+  end;
+
   return 'vinculado';
 end;
 $$;
