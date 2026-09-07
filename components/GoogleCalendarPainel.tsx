@@ -48,7 +48,6 @@ export default function GoogleCalendarPainel({
   const [carregando, setCarregando] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [debug, setDebug] = useState<unknown>(null);
 
   const erroQuery = searchParams.get("google_erro");
   const conectadoAgora = searchParams.get("google_conectado");
@@ -96,14 +95,8 @@ export default function GoogleCalendarPainel({
     setSincronizando(true);
     setMsg(null);
     const res = await fetch("/api/google/sincronizar", { method: "POST" });
-    const body = (await res.json()) as {
-      criadas?: number;
-      atualizadas?: number;
-      error?: string;
-      debug?: unknown;
-    };
+    const body = (await res.json()) as { criadas?: number; atualizadas?: number; error?: string };
     setSincronizando(false);
-    setDebug(body.debug ?? null);
     if (!res.ok) {
       setMsg(body.error ?? "Falha ao sincronizar");
       return;
@@ -169,17 +162,6 @@ export default function GoogleCalendarPainel({
         <div className="mb-2 text-xs text-success">Conta do Google conectada!</div>
       )}
       {msg && <div className="mb-2 text-xs text-muted">{msg}</div>}
-
-      {debug !== null && debug !== undefined && (
-        <details className="mb-2">
-          <summary className="cursor-pointer text-xs text-muted">
-            Diagnóstico (temporário) - clique e copie tudo
-          </summary>
-          <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-surface-2 p-2 text-[11px] text-ink">
-            {JSON.stringify(debug, null, 2)}
-          </pre>
-        </details>
-      )}
 
       {conectado && vinculos.length > 0 && (
         <div className="mb-3">
