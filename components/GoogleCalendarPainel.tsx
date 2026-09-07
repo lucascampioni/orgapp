@@ -95,18 +95,22 @@ export default function GoogleCalendarPainel({
     setSincronizando(true);
     setMsg(null);
     const res = await fetch("/api/google/sincronizar", { method: "POST" });
-    const body = (await res.json()) as { criadas?: number; error?: string };
+    const body = (await res.json()) as { criadas?: number; atualizadas?: number; error?: string };
     setSincronizando(false);
     if (!res.ok) {
       setMsg(body.error ?? "Falha ao sincronizar");
       return;
     }
+    const partes = [
+      body.criadas && body.criadas > 0 ? `${body.criadas} aula(s) nova(s) criada(s)` : null,
+      body.atualizadas && body.atualizadas > 0 ? `${body.atualizadas} aula(s) atualizada(s)` : null,
+    ].filter(Boolean);
     setMsg(
-      body.criadas && body.criadas > 0
-        ? `${body.criadas} aula(s) nova(s) criada(s) a partir do Google Calendar.`
+      partes.length > 0
+        ? `${partes.join(" e ")} a partir do Google Calendar.`
         : "Tudo já estava sincronizado.",
     );
-    if (body.criadas && body.criadas > 0) {
+    if ((body.criadas && body.criadas > 0) || (body.atualizadas && body.atualizadas > 0)) {
       onAulasCriadas?.();
     }
     router.refresh();

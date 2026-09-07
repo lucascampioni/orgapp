@@ -86,25 +86,53 @@ export async function POST(request: NextRequest) {
 
   const { data: existentes } = await supabase
     .from("aulas")
-    .select("google_event_id")
+    .select("id, google_event_id, data, horario, meet_link")
     .eq("professor_id", user.id)
     .in(
       "google_event_id",
       candidatos.map((c) => c.google_event_id),
     );
 
-  const idsExistentes = new Set((existentes ?? []).map((a) => a.google_event_id));
-  const novas = candidatos.filter((c) => !idsExistentes.has(c.google_event_id));
+  const existentePorGoogleId = new Map((existentes ?? []).map((a) => [a.google_event_id, a]));
+  const novas = candidatos.filter((c) => !existentePorGoogleId.has(c.google_event_id));
 
-  if (novas.length === 0) {
-    return NextResponse.json({ ok: true, criadas: 0 });
+  // Um evento já vinculado pode ter data/horário/link mudados direto no
+  // Google (ex: professor remarcou o horário) - reflete isso na aula já
+  // existente em vez de só ignorar por já ter sido sincronizada antes.
+  const atualizacoes = candidatos
+    .map((c) => {
+      const existente = existentePorGoogleId.get(c.google_event_id);
+      if (!existente) return null;
+      const mudou =
+        existente.data !== c.data ||
+        existente.horario !== c.horario ||
+        (c.meet_link && existente.meet_link !== c.meet_link);
+      if (!mudou) return null;
+      return {
+        id: existente.id,
+        data: c.data,
+        horario: c.horario,
+        meet_link: c.meet_link ?? existente.meet_link,
+      };
+    })
+    .filter((a): a is NonNullable<typeof a> => a !== null);
+
+  if (novas.length > 0) {
+    const { error: insertError } = await supabase.from("aulas").insert(novas);
+    if (insertError) {
+      console.error("Falha ao criar aulas a partir do Google Calendar", insertError);
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
   }
 
-  const { error: insertError } = await supabase.from("aulas").insert(novas);
-  if (insertError) {
-    console.error("Falha ao criar aulas a partir do Google Calendar", insertError);
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  for (const atualizacao of atualizacoes) {
+    const { id, ...campos } = atualizacao;
+    const { error: updateError } = await supabase.from("aulas").update(campos).eq("id", id);
+    if (updateError) {
+      console.error("Falha ao atualizar aula a partir do Google Calendar", updateError);
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
   }
 
-  return NextResponse.json({ ok: true, criadas: novas.length });
+  return NextResponse.json({ ok: true, criadas: novas.length, atualizadas: atualizacoes.length });
 }
