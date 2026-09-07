@@ -134,5 +134,17 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, criadas: novas.length, atualizadas: atualizacoes.length });
+  return NextResponse.json({
+    ok: true,
+    criadas: novas.length,
+    atualizadas: atualizacoes.length,
+    // TODO: remover esse debug depois de descobrir por que uma aula
+    // remarcada no Google não estava batendo com a aula já sincronizada.
+    debug: candidatos.map((c) => ({
+      google_event_id: c.google_event_id,
+      google_data: c.data,
+      google_horario: c.horario,
+      banco: existentePorGoogleId.get(c.google_event_id) ?? null,
+    })),
+  });
 }
