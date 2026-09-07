@@ -40,7 +40,7 @@ const SUMMARY_TOOL = {
           required: ["termo"],
         },
         description:
-          "Palavras ou expressões em inglês que ficam claramente sendo ensinadas/explicadas como vocabulário novo para o aluno nessa aula (ex: a professora traduz ou explica o significado de uma palavra). Não inclua palavras comuns já dominadas, só as que foram efetivamente ensinadas. Pode ser vazia.",
+          "Toda palavra ou expressão em inglês que a professora traduziu, explicou o significado ou deu como exemplo durante a aula - mesmo em aulas focadas em gramática (ex: ao explicar 'to be', a professora usa e traduz 'angry' e a expressão 'I get it' - isso conta como vocabulário). Não inclua palavras comuns que o aluno já claramente dominava sem precisar de explicação. IMPORTANTE: se o campo 'resumo' menciona alguma palavra/expressão sendo trabalhada, ela tem que aparecer aqui também - os dois campos precisam ser consistentes entre si. Pode ser vazia só se nenhuma palavra foi de fato explicada.",
       },
       topicos: {
         type: "array",
@@ -112,7 +112,7 @@ async function summarize(transcript: string) {
     messages: [
       {
         role: "user",
-        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, as tarefas de acompanhamento, o vocabulário novo ensinado, os tópicos abordados, os erros que o ALUNO cometeu ao falar inglês, os pontos positivos, os pontos a melhorar e uma sugestão pra próxima aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
+        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, as tarefas de acompanhamento, o vocabulário novo ensinado, os tópicos abordados, os erros que o ALUNO cometeu ao falar inglês, os pontos positivos, os pontos a melhorar e uma sugestão pra próxima aula, usando a ferramenta disponível. Antes de responder, confira: toda palavra/expressão que você citar no resumo como tendo sido ensinada ou trabalhada também precisa estar listada no campo vocabulario - os dois campos não podem se contradizer.\n\nTranscrição:\n${transcript}`,
       },
     ],
   });
