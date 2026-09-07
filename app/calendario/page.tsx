@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProfessorShell from "@/components/ProfessorShell";
 import CalendarioView from "@/components/CalendarioView";
-import GoogleCalendarPainel from "@/components/GoogleCalendarPainel";
 import type { Aluno, Aula, ErroAula, TarefaAula, Turma, Vocabulario } from "@/lib/types";
 
 export default async function CalendarioPage() {
@@ -49,14 +48,9 @@ export default async function CalendarioPage() {
         initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
         initialVocabulario={(vocabulario as Vocabulario[]) ?? []}
         initialErros={(erros as ErroAula[]) ?? []}
-        googleSlot={
-          <GoogleCalendarPainel
-            conectado={Boolean(googleConexao)}
-            googleEmail={googleConexao?.google_email ?? null}
-            vinculos={googleVinculos ?? []}
-            alunos={(alunos as Aluno[]) ?? []}
-          />
-        }
+        googleConectado={Boolean(googleConexao)}
+        googleEmail={googleConexao?.google_email ?? null}
+        googleVinculos={googleVinculos ?? []}
       />
     </ProfessorShell>
   );

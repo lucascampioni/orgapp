@@ -4,7 +4,15 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Aluno, Aula, ErroAula, TarefaAula, Turma, Vocabulario } from "@/lib/types";
 import AulaModal from "@/components/AulaModal";
+import GoogleCalendarPainel from "@/components/GoogleCalendarPainel";
 import { inputClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui";
+
+type GoogleVinculo = {
+  id: string;
+  aluno_id: string;
+  google_recurring_event_id: string;
+  titulo: string | null;
+};
 
 const DIAS_SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 const MESES = [
@@ -43,7 +51,9 @@ export default function CalendarioView({
   initialTarefasAula,
   initialVocabulario,
   initialErros,
-  googleSlot,
+  googleConectado,
+  googleEmail,
+  googleVinculos,
 }: {
   initialAulas: Aula[];
   alunos: Aluno[];
@@ -51,7 +61,9 @@ export default function CalendarioView({
   initialTarefasAula: TarefaAula[];
   initialVocabulario: Vocabulario[];
   initialErros: ErroAula[];
-  googleSlot?: React.ReactNode;
+  googleConectado: boolean;
+  googleEmail: string | null;
+  googleVinculos: GoogleVinculo[];
 }) {
   const supabase = useMemo(() => createClient(), []);
   const hoje = new Date();
@@ -76,6 +88,11 @@ export default function CalendarioView({
     }
     return map;
   }, [aulas]);
+
+  async function refetchAulas() {
+    const { data } = await supabase.from("aulas").select("*");
+    if (data) setAulas(data as Aula[]);
+  }
 
   async function addAula(alunoId: string, titulo: string, data: string) {
     const { data: row, error } = await supabase
@@ -205,7 +222,13 @@ export default function CalendarioView({
         </div>
       </div>
 
-      {googleSlot}
+      <GoogleCalendarPainel
+        conectado={googleConectado}
+        googleEmail={googleEmail}
+        vinculos={googleVinculos}
+        alunos={alunos}
+        onAulasCriadas={refetchAulas}
+      />
 
       <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-border bg-border">
         {DIAS_SEMANA.map((d) => (

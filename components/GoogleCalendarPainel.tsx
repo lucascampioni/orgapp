@@ -33,11 +33,13 @@ export default function GoogleCalendarPainel({
   googleEmail,
   vinculos,
   alunos,
+  onAulasCriadas,
 }: {
   conectado: boolean;
   googleEmail: string | null;
   vinculos: Vinculo[];
   alunos: Aluno[];
+  onAulasCriadas?: () => void;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -104,6 +106,9 @@ export default function GoogleCalendarPainel({
         ? `${body.criadas} aula(s) nova(s) criada(s) a partir do Google Calendar.`
         : "Tudo já estava sincronizado.",
     );
+    if (body.criadas && body.criadas > 0) {
+      onAulasCriadas?.();
+    }
     router.refresh();
   }
 
