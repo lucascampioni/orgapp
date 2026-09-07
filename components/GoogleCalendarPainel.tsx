@@ -11,6 +11,7 @@ type EventoGoogle = {
   summary: string;
   start: string | null;
   hangoutLink: string | null;
+  recorrencia: string | null;
 };
 
 type Vinculo = {
@@ -246,6 +247,7 @@ function EventoRow({
       <div className="min-w-0">
         <div className="truncate text-xs text-ink">{evento.summary}</div>
         {evento.start && <div className="text-[11px] text-muted">{evento.start.slice(0, 16).replace("T", " ")}</div>}
+        {evento.recorrencia && <div className="text-[11px] text-brand">{evento.recorrencia}</div>}
       </div>
       {jaVinculado ? (
         <span className="text-[11px] text-success">já vinculado</span>

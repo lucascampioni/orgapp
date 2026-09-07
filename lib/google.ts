@@ -60,6 +60,49 @@ export function linkDaVideochamada(evento: calendar_v3.Schema$Event): string | n
   return video?.uri ?? null;
 }
 
+const DIA_SEMANA: Record<string, string> = {
+  MO: "segunda-feira",
+  TU: "terça-feira",
+  WE: "quarta-feira",
+  TH: "quinta-feira",
+  FR: "sexta-feira",
+  SA: "sábado",
+  SU: "domingo",
+};
+
+/**
+ * Descreve em português a recorrência (RRULE) de um evento mestre do
+ * Google, pra mostrar na hora de vincular ("Toda semana (quarta-feira)").
+ * Cobre os padrões mais comuns de aula recorrente; RRULE mais exótica cai
+ * no fallback genérico "Recorrente" em vez de tentar traduzir tudo.
+ */
+export function descreverRecorrencia(recurrence?: string[] | null): string | null {
+  const rrule = recurrence?.find((r) => r.startsWith("RRULE:"));
+  if (!rrule) return null;
+
+  const partes = Object.fromEntries(
+    rrule
+      .replace("RRULE:", "")
+      .split(";")
+      .map((par) => par.split("=") as [string, string]),
+  );
+
+  const freq = partes.FREQ;
+  const interval = Number(partes.INTERVAL ?? "1");
+  const byday = partes.BYDAY?.split(",")
+    .map((d) => DIA_SEMANA[d])
+    .filter((d): d is string => !!d);
+
+  if (freq === "WEEKLY" && byday && byday.length > 0) {
+    const dias = byday.join(", ");
+    return interval > 1 ? `A cada ${interval} semanas (${dias})` : `Toda semana (${dias})`;
+  }
+  if (freq === "WEEKLY") return interval > 1 ? `A cada ${interval} semanas` : "Toda semana";
+  if (freq === "DAILY") return interval > 1 ? `A cada ${interval} dias` : "Todo dia";
+  if (freq === "MONTHLY") return interval > 1 ? `A cada ${interval} meses` : "Todo mês";
+  return "Recorrente";
+}
+
 export type GoogleTokens = {
   access_token: string;
   refresh_token?: string | null;

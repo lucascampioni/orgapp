@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { carregarClienteCalendar } from "@/lib/google";
+import { carregarClienteCalendar, descreverRecorrencia } from "@/lib/google";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -33,12 +33,32 @@ export async function GET(request: NextRequest) {
     });
     await conexao.persistirTokenSeRenovado();
 
-    const eventos = (res.data.items ?? []).map((e) => ({
+    const itens = res.data.items ?? [];
+
+    // singleEvents:true devolve as ocorrências já expandidas, sem o RRULE
+    // (isso só existe no evento mestre) - busca o mestre uma vez por série
+    // (não por ocorrência) só pra extrair a recorrência legível.
+    const idsRecorrentes = [...new Set(itens.map((e) => e.recurringEventId).filter((id): id is string => !!id))];
+    const recorrenciaPorId = new Map<string, string | null>();
+    await Promise.all(
+      idsRecorrentes.map(async (id) => {
+        try {
+          const mestre = await conexao.calendar.events.get({ calendarId: "primary", eventId: id });
+          recorrenciaPorId.set(id, descreverRecorrencia(mestre.data.recurrence));
+        } catch (err) {
+          console.error("Falha ao buscar evento mestre pra recorrência", id, err);
+          recorrenciaPorId.set(id, null);
+        }
+      }),
+    );
+
+    const eventos = itens.map((e) => ({
       id: e.id,
       recurringEventId: e.recurringEventId ?? null,
       summary: e.summary ?? "(sem título)",
       start: e.start?.dateTime ?? e.start?.date ?? null,
       hangoutLink: e.hangoutLink ?? null,
+      recorrencia: e.recurringEventId ? recorrenciaPorId.get(e.recurringEventId) ?? null : null,
     }));
 
     return NextResponse.json({ eventos });
