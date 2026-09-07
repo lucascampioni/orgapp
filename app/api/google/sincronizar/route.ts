@@ -28,9 +28,10 @@ export async function POST(request: NextRequest) {
   if (vinculosError) {
     return NextResponse.json({ error: vinculosError.message }, { status: 500 });
   }
-  if (!vinculos || vinculos.length === 0) {
-    return NextResponse.json({ ok: true, criadas: 0 });
-  }
+
+  // Não retorna cedo se não tiver vínculo nenhum: mesmo sem vínculo ativo,
+  // ainda pode ter aula sincronizada antes cujo evento foi apagado do
+  // Google (ou o vínculo foi removido) e que precisa ser limpa mais abaixo.
 
   // Começa 30 dias no passado (não só "agora pra frente") pra pegar aulas
   // recentes que já aconteceram, não só as futuras.
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Falha ao buscar eventos: ${detail}` }, { status: 502 });
   }
 
-  const vinculoPorGoogleId = new Map(vinculos.map((v) => [v.google_recurring_event_id, v]));
+  const vinculoPorGoogleId = new Map((vinculos ?? []).map((v) => [v.google_recurring_event_id, v]));
 
   // Instância cancelada de um evento recorrente continua aparecendo na
   // listagem (com status "cancelled"), em vez de simplesmente sumir - trata
