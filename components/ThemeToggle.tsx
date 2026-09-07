@@ -38,6 +38,7 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
 
   return (
     <button
+      type="button"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted transition hover:text-ink ${className}`}
