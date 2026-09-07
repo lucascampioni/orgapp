@@ -59,7 +59,14 @@ export async function POST(request: NextRequest) {
 
   const vinculoPorGoogleId = new Map(vinculos.map((v) => [v.google_recurring_event_id, v]));
 
-  const candidatos = (eventos ?? [])
+  // Instância cancelada de um evento recorrente continua aparecendo na
+  // listagem (com status "cancelled"), em vez de simplesmente sumir - trata
+  // como se não existisse mais, tanto pra não recriar quanto pra detectar
+  // que foi removida (mais abaixo).
+  const eventosAtivos = (eventos ?? []).filter((e) => e.status !== "cancelled");
+  const idsAtivosNoGoogle = new Set(eventosAtivos.map((e) => e.id).filter((id): id is string => !!id));
+
+  const candidatos = eventosAtivos
     .map((e) => {
       const chave = e.recurringEventId ?? e.id;
       const vinculo = chave ? vinculoPorGoogleId.get(chave) : undefined;
@@ -81,8 +88,33 @@ export async function POST(request: NextRequest) {
     })
     .filter((c): c is NonNullable<typeof c> => c !== null);
 
+  // Aula que já foi importada do Google mas o evento sumiu de lá (apagado
+  // ou instância cancelada) dentro da mesma janela que acabamos de
+  // consultar - remove daqui também. Só mexe em aulas "planejada" (nunca
+  // apaga uma aula que já foi dada/gravada só porque o evento sumiu depois).
+  const { data: sincronizadas } = await supabase
+    .from("aulas")
+    .select("id, google_event_id")
+    .eq("professor_id", user.id)
+    .eq("status", "planejada")
+    .not("google_event_id", "is", null)
+    .gte("data", inicio.toISOString().slice(0, 10))
+    .lte("data", limite.toISOString().slice(0, 10));
+
+  const idsParaRemover = (sincronizadas ?? [])
+    .filter((a) => a.google_event_id && !idsAtivosNoGoogle.has(a.google_event_id))
+    .map((a) => a.id);
+
+  if (idsParaRemover.length > 0) {
+    const { error: deleteError } = await supabase.from("aulas").delete().in("id", idsParaRemover);
+    if (deleteError) {
+      console.error("Falha ao remover aulas apagadas no Google Calendar", deleteError);
+      return NextResponse.json({ error: deleteError.message }, { status: 500 });
+    }
+  }
+
   if (candidatos.length === 0) {
-    return NextResponse.json({ ok: true, criadas: 0 });
+    return NextResponse.json({ ok: true, criadas: 0, removidas: idsParaRemover.length });
   }
 
   const { data: existentes } = await supabase
@@ -147,5 +179,10 @@ export async function POST(request: NextRequest) {
     await agendarBotSeNecessario(supabase, id, webhookUrl);
   }
 
-  return NextResponse.json({ ok: true, criadas: novas.length, atualizadas: atualizacoes.length });
+  return NextResponse.json({
+    ok: true,
+    criadas: novas.length,
+    atualizadas: atualizacoes.length,
+    removidas: idsParaRemover.length,
+  });
 }
