@@ -564,3 +564,50 @@ create policy "erros_aula_select_aluno" on public.erros_aula for select to authe
   using (exists (
     select 1 from public.alunos a where a.id = erros_aula.aluno_id and a.user_id = auth.uid()
   ));
+
+-- ---------------------------------------------------------------------
+-- Integração com Google Calendar (opcional - ver README).
+-- ---------------------------------------------------------------------
+
+-- Tokens OAuth da conta Google de cada professora. access_token expira
+-- rápido (é renovado via refresh_token nas rotas de API, não aqui).
+create table if not exists public.google_conexoes (
+  professor_id uuid primary key references auth.users(id) on delete cascade,
+  google_email text,
+  access_token text not null,
+  refresh_token text,
+  expiry timestamptz,
+  criado_em timestamptz not null default now(),
+  atualizado_em timestamptz not null default now()
+);
+
+-- Vínculo entre um evento recorrente do Google Calendar e um aluno: toda
+-- ocorrência futura desse evento vira uma aula automaticamente ao
+-- sincronizar (ver /api/google/sincronizar).
+create table if not exists public.google_vinculos (
+  id uuid primary key default gen_random_uuid(),
+  professor_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  aluno_id uuid not null references public.alunos(id) on delete cascade,
+  google_recurring_event_id text not null,
+  titulo text,
+  criado_em timestamptz not null default now(),
+  unique (professor_id, google_recurring_event_id)
+);
+
+-- Referência à ocorrência do Google que gerou a aula, pra sincronizar de
+-- novo sem duplicar.
+alter table public.aulas add column if not exists google_event_id text;
+create unique index if not exists aulas_google_event_unique_idx
+  on public.aulas (professor_id, google_event_id)
+  where google_event_id is not null;
+
+alter table public.google_conexoes enable row level security;
+alter table public.google_vinculos enable row level security;
+
+drop policy if exists "google_conexoes_all_own" on public.google_conexoes;
+create policy "google_conexoes_all_own" on public.google_conexoes for all to authenticated
+  using (professor_id = auth.uid()) with check (professor_id = auth.uid());
+
+drop policy if exists "google_vinculos_all_own" on public.google_vinculos;
+create policy "google_vinculos_all_own" on public.google_vinculos for all to authenticated
+  using (professor_id = auth.uid()) with check (professor_id = auth.uid());

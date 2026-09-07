@@ -19,7 +19,26 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 
 ### Navegação
 
-A professora tem uma barra lateral (topo em telas pequenas) com três seções: **Dashboard** (visão geral com indicadores, próximas aulas, alunos recentes e insights heurísticos), **Alunos** (lista/cadastro) e **Tarefas** (todas as tarefas de todos os alunos, com filtro de pendentes/concluídas). O perfil de cada aluno agora também guarda nível de inglês (escala CEFR, A1-C2), objetivo de estudo, pontos fortes e pontos a desenvolver, editáveis na aba "Visão geral".
+A professora tem uma barra lateral (topo em telas pequenas) com quatro seções: **Dashboard** (visão geral com indicadores, próximas aulas, alunos recentes e insights heurísticos), **Alunos** (lista/cadastro), **Calendário** (visão mensal das aulas, com integração opcional ao Google Calendar) e **Tarefas** (todas as tarefas de todos os alunos, com filtro de pendentes/concluídas). O perfil de cada aluno agora também guarda nível de inglês (escala CEFR, A1-C2), objetivo de estudo, pontos fortes e pontos a desenvolver, editáveis na aba "Visão geral".
+
+### Integração com Google Calendar (opcional)
+
+Na tela de **Calendário**, a professora pode conectar sua conta do Google, escolher um evento **recorrente** da própria agenda do Google (ex: "Aula com o João, toda terça 19h") e vincular esse evento a um aluno. Ao clicar em "Sincronizar agora" (ou automaticamente ao reconectar), cada ocorrência futura desse evento vira uma aula no Lumina, já com o link do Google Meet do evento preenchido. É importação apenas (Google → Lumina); aulas criadas direto no Lumina não aparecem na agenda do Google.
+
+Passo a passo pra criar as credenciais (isso é obrigatório - sem elas o botão "Conectar Google Calendar" dá erro):
+
+1. Vá em [console.cloud.google.com](https://console.cloud.google.com), crie um projeto (ou use um existente).
+2. **APIs & Services → Library**: procure "Google Calendar API" e clique em **Enable**.
+3. **APIs & Services → OAuth consent screen**: escolha **External**, preencha nome do app/e-mail. Em **Test users**, adicione o e-mail Google de cada professora que vai usar (enquanto o app estiver em modo "Testing", só esses e-mails conseguem conectar - isso evita ter que passar pela verificação do Google, que é demorada).
+4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**, tipo **Web application**. Em **Authorized redirect URIs**, adicione exatamente `https://SEU-DOMINIO/api/google/callback` (produção) - sem essa URL batendo character-by-character, o Google recusa o login com "redirect_uri_mismatch".
+5. Copie o **Client ID** e o **Client Secret** gerados e coloque nas env vars abaixo (`.env.local` e na Vercel).
+
+```
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+```
+
+Também precisa rodar o `supabase/schema.sql` de novo (cria as tabelas `google_conexoes` e `google_vinculos`, e a coluna `google_event_id` em `aulas`).
 
 ### Cadastro de alunos
 
