@@ -464,6 +464,31 @@ drop policy if exists "aluno_professor_all_own" on public.aluno_professor;
 create policy "aluno_professor_all_own" on public.aluno_professor for all to authenticated
   using (professor_id = auth.uid()) with check (professor_id = auth.uid());
 
+-- Policies antigas de antes do sistema multi-professora (geradas pelo
+-- template padrão do Supabase, tudo "true" pra authenticated) - deixavam
+-- qualquer professora ver/editar/apagar dado de qualquer outra. Removidas
+-- aqui pra sempre, mesmo que reapareçam manualmente por engano de novo.
+drop policy if exists "alunos_select_authenticated" on public.alunos;
+drop policy if exists "alunos_insert_authenticated" on public.alunos;
+drop policy if exists "alunos_update_authenticated" on public.alunos;
+drop policy if exists "alunos_delete_authenticated" on public.alunos;
+drop policy if exists "aulas_select_authenticated" on public.aulas;
+drop policy if exists "aulas_insert_authenticated" on public.aulas;
+drop policy if exists "aulas_update_authenticated" on public.aulas;
+drop policy if exists "aulas_delete_authenticated" on public.aulas;
+drop policy if exists "materiais_select_authenticated" on public.materiais;
+drop policy if exists "materiais_insert_authenticated" on public.materiais;
+drop policy if exists "materiais_update_authenticated" on public.materiais;
+drop policy if exists "materiais_delete_authenticated" on public.materiais;
+drop policy if exists "tarefas_aula_select_authenticated" on public.tarefas_aula;
+drop policy if exists "tarefas_aula_insert_authenticated" on public.tarefas_aula;
+drop policy if exists "tarefas_aula_update_authenticated" on public.tarefas_aula;
+drop policy if exists "tarefas_aula_delete_authenticated" on public.tarefas_aula;
+drop policy if exists "turmas_select_authenticated" on public.turmas;
+drop policy if exists "turmas_insert_authenticated" on public.turmas;
+drop policy if exists "turmas_update_authenticated" on public.turmas;
+drop policy if exists "turmas_delete_authenticated" on public.turmas;
+
 drop policy if exists "alunos_select_vinculado" on public.alunos;
 create policy "alunos_select_vinculado" on public.alunos for select to authenticated
   using (
