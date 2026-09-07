@@ -100,6 +100,31 @@ export function extractTranscriptId(payload: unknown): string | null {
   return typeof transcript?.id === "string" ? transcript.id : null;
 }
 
+/**
+ * Busca o transcript_id a partir só do bot_id, pra reprocessar uma aula sem
+ * depender de ter recebido o payload do webhook (a gente só guarda o
+ * recall_bot_id no banco, não o transcript_id). Escrito sem acesso à doc ao
+ * vivo (mesma ressalva do topo do arquivo) - o formato mais comum da
+ * Recall.ai é bot.recordings[].media_shortcuts.transcript.data.id, mas essa
+ * função tenta achar o id em qualquer lugar plausível da resposta.
+ */
+export async function getTranscriptIdFromBot(botId: string): Promise<string | null> {
+  const res = await fetch(`${RECALL_API_BASE}/bot/${botId}/`, { headers: authHeaders() });
+  if (!res.ok) {
+    throw new Error(`Falha ao buscar bot no Recall.ai (${res.status}): ${await res.text()}`);
+  }
+
+  const bot = (await res.json()) as Record<string, unknown>;
+  const recordings = (bot.recordings as Record<string, unknown>[] | undefined) ?? [];
+  for (const recording of recordings) {
+    const shortcuts = recording.media_shortcuts as Record<string, unknown> | undefined;
+    const transcript = shortcuts?.transcript as Record<string, unknown> | undefined;
+    const data = transcript?.data as Record<string, unknown> | undefined;
+    if (typeof data?.id === "string") return data.id;
+  }
+  return null;
+}
+
 export async function getTranscriptText(transcriptId: string): Promise<string> {
   // GET /bot/{id}/transcript/ é o endpoint antigo e não existe mais nesse
   // formato para bots criados com recording_config - a transcrição agora é

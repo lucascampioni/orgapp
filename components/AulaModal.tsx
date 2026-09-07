@@ -23,6 +23,7 @@ export default function AulaModal({
   onSave,
   onIniciarGravacao,
   onRefresh,
+  onReprocessar,
   onToggleTarefa,
   onRemoveTarefa,
   onRemoveAula,
@@ -37,6 +38,7 @@ export default function AulaModal({
   onSave: (fields: Partial<Aula>) => Promise<void>;
   onIniciarGravacao: () => Promise<string | null>;
   onRefresh: () => Promise<void>;
+  onReprocessar: () => Promise<string | null>;
   onToggleTarefa: (tarefa: TarefaAula) => void;
   onRemoveTarefa: (id: string) => void;
   onRemoveAula: () => void;
@@ -54,6 +56,7 @@ export default function AulaModal({
   const [gravacaoLoading, setGravacaoLoading] = useState(false);
   const [gravacaoErro, setGravacaoErro] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [reprocessando, setReprocessando] = useState(false);
 
   async function handleSave() {
     setSaving(true);
@@ -84,6 +87,14 @@ export default function AulaModal({
     setRefreshing(true);
     await onRefresh();
     setRefreshing(false);
+  }
+
+  async function handleReprocessar() {
+    setReprocessando(true);
+    setGravacaoErro(null);
+    const erro = await onReprocessar();
+    setReprocessando(false);
+    if (erro) setGravacaoErro(erro);
   }
 
   return (
@@ -232,6 +243,16 @@ export default function AulaModal({
           <div className="mb-3 rounded-lg border border-border bg-surface-2 p-3 text-sm text-ink">
             {aula.resumo_ia}
           </div>
+        )}
+
+        {aula.recall_bot_id && (
+          <button
+            onClick={handleReprocessar}
+            disabled={reprocessando}
+            className="mb-3 text-xs text-muted transition hover:text-ink"
+          >
+            {reprocessando ? "Reprocessando..." : "↻ Reprocessar com IA"}
+          </button>
         )}
 
         {aula.topicos && aula.topicos.length > 0 && (

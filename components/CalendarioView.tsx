@@ -200,6 +200,21 @@ export default function CalendarioView({
     }
   }
 
+  async function reprocessarAula(aulaId: string) {
+    const res = await fetch("/api/recall/reprocessar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ aulaId }),
+    });
+    const body = (await res.json()) as { error?: string };
+    if (!res.ok) {
+      console.error("Falha ao reprocessar aula", body.error);
+      return body.error ?? "Falha ao reprocessar";
+    }
+    await refreshAula(aulaId);
+    return null;
+  }
+
   const grade = gerarGrade(ano, mes);
   const openAula = aulas.find((a) => a.id === openAulaId) ?? null;
   const hojeISO = hojeStr();
@@ -328,6 +343,7 @@ export default function CalendarioView({
           onSave={(fields) => updateAula(openAula.id, fields)}
           onIniciarGravacao={() => iniciarGravacao(openAula.id)}
           onRefresh={() => refreshAula(openAula.id)}
+          onReprocessar={() => reprocessarAula(openAula.id)}
           onToggleTarefa={toggleTarefaAula}
           onRemoveTarefa={removeTarefaAula}
           onRemoveAula={() => {
