@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Fraunces } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,7 +35,18 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-bg text-ink">{children}</body>
+      <body className="flex min-h-full flex-col bg-bg text-ink">
+        {/* Lê a preferência de tema antes da primeira pintura, pra não
+            piscar claro->escuro quando o usuário já escolheu escuro. */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`try {
+            if (localStorage.getItem('theme') === 'dark') {
+              document.documentElement.setAttribute('data-theme', 'dark');
+            }
+          } catch (e) {}`}
+        </Script>
+        {children}
+      </body>
     </html>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type Escolha = "escolha" | "professora" | "aluno";
 
@@ -16,9 +17,12 @@ export default function CadastroForm() {
 
   return (
     <div className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-surface p-7 shadow-2xl shadow-black/40">
-      <div className="mb-6">
-        <Logo size="lg" />
-        <p className="mt-2 text-sm text-muted">Criar conta</p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <Logo size="lg" />
+          <p className="mt-2 text-sm text-muted">Criar conta</p>
+        </div>
+        <ThemeToggle />
       </div>
 
       {tipo === "escolha" && (

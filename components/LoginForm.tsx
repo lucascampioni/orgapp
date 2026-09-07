@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -39,11 +40,14 @@ export default function LoginForm() {
       onSubmit={handleSubmit}
       className="relative z-10 w-full max-w-sm rounded-2xl border border-border bg-surface p-7 shadow-2xl shadow-black/40"
     >
-      <div className="mb-6">
-        <Logo size="lg" />
-        <p className="mt-2 text-sm text-muted">
-          Alunos, aulas e vocabulário num só lugar.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <Logo size="lg" />
+          <p className="mt-2 text-sm text-muted">
+            Alunos, aulas e vocabulário num só lugar.
+          </p>
+        </div>
+        <ThemeToggle />
       </div>
 
       <label className="mb-1 block text-xs font-medium text-muted">E-mail</label>

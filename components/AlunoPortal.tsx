@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Aluno, Aula, Pagamento, TarefaAula, Vocabulario } from "@/lib/types";
 import LogoutButton from "@/components/LogoutButton";
 import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
 
 function hoje() {
   return new Date().toISOString().slice(0, 10);
@@ -50,7 +51,10 @@ export default function AlunoPortal({
           <Logo />
           <div className="mt-1 text-[13px] text-muted">Logado como {userEmail}</div>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <LogoutButton />
+        </div>
       </header>
 
       {alunos.length === 0 ? (

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Logo from "@/components/Logo";
 import LogoutButton from "@/components/LogoutButton";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const NAV = [
   { href: "/", label: "Dashboard", icon: "◱" },
@@ -31,9 +32,12 @@ export default function ProfessorShell({
         <div className="mb-5 hidden md:block">
           <Logo size="sm" />
         </div>
-        <div className="mb-3 flex items-center justify-between md:hidden">
+        <div className="mb-3 flex items-center justify-between gap-2 md:hidden">
           <Logo size="sm" />
-          <LogoutButton />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <LogoutButton />
+          </div>
         </div>
 
         <nav className="flex gap-2 overflow-x-auto md:flex-col md:gap-1 md:overflow-visible">
@@ -55,7 +59,10 @@ export default function ProfessorShell({
 
         <div className="mt-6 hidden border-t border-border pt-4 md:block">
           <div className="mb-2 truncate text-xs text-muted">{userEmail}</div>
-          <LogoutButton />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <LogoutButton />
+          </div>
         </div>
       </aside>
 
