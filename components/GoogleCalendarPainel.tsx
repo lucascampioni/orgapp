@@ -79,7 +79,9 @@ export default function GoogleCalendarPainel({
       setMsg(body.error ?? "Falha ao vincular");
       return;
     }
-    router.refresh();
+    // Vincular já sincroniza na hora, pra aula aparecer no calendário sem
+    // precisar de um segundo clique em "Sincronizar agora".
+    await sincronizar();
   }
 
   async function desvincular(id: string) {

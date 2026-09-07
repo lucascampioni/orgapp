@@ -31,7 +31,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, criadas: 0 });
   }
 
-  const agora = new Date();
+  // Começa 30 dias no passado (não só "agora pra frente") pra pegar aulas
+  // recentes que já aconteceram, não só as futuras.
+  const inicio = new Date();
+  inicio.setDate(inicio.getDate() - 30);
   const limite = new Date();
   limite.setDate(limite.getDate() + 90);
 
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
   try {
     const res = await conexao.calendar.events.list({
       calendarId: "primary",
-      timeMin: agora.toISOString(),
+      timeMin: inicio.toISOString(),
       timeMax: limite.toISOString(),
       singleEvents: true,
       orderBy: "startTime",
