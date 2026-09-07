@@ -506,7 +506,9 @@ function AlunoGeral({
         <div className="rounded-lg border border-border bg-surface-2 p-3">
           <div className="text-xs text-muted">Próxima aula</div>
           <div className="mt-1 text-sm text-ink">
-            {proximaAula ? `${proximaAula.titulo} · ${proximaAula.data}` : "Nenhuma agendada"}
+            {proximaAula
+              ? `${proximaAula.titulo} · ${proximaAula.data}${proximaAula.horario ? ` · ${proximaAula.horario}` : ""}`
+              : "Nenhuma agendada"}
           </div>
         </div>
         <div className="rounded-lg border border-border bg-surface-2 p-3">
@@ -693,7 +695,10 @@ function AlunoAulas({
       >
         <div>
           <div className="text-sm text-ink">{aula.titulo}</div>
-          <div className="text-xs text-muted">{aula.data ?? "sem data"}</div>
+          <div className="text-xs text-muted">
+            {aula.data ?? "sem data"}
+            {aula.horario ? ` · ${aula.horario}` : ""}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {pendentes > 0 && <span className="text-xs text-brand">{pendentes} pendente(s)</span>}

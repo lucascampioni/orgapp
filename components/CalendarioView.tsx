@@ -86,6 +86,9 @@ export default function CalendarioView({
       lista.push(a);
       map.set(a.data, lista);
     }
+    for (const lista of map.values()) {
+      lista.sort((a, b) => (a.horario ?? "").localeCompare(b.horario ?? ""));
+    }
     return map;
   }, [aulas]);
 
@@ -277,8 +280,9 @@ export default function CalendarioView({
                           ? "bg-success/20 text-success"
                           : "bg-brand/15 text-brand"
                       }`}
-                      title={`${aluno?.nome ?? "Sem aluno"} · ${a.titulo}`}
+                      title={`${a.horario ? `${a.horario} · ` : ""}${aluno?.nome ?? "Sem aluno"} · ${a.titulo}`}
                     >
+                      {a.horario ? `${a.horario} ` : ""}
                       {aluno?.nome ?? "Sem aluno"}
                     </button>
                   );

@@ -7,7 +7,7 @@
  * precisa estar cadastrado nas "Authorized redirect URIs" do app no Google
  * Cloud Console, senão o Google recusa o login com "redirect_uri_mismatch".
  */
-import { google } from "googleapis";
+import { google, type calendar_v3 } from "googleapis";
 import type { createClient } from "@/lib/supabase/server";
 
 export const GOOGLE_SCOPES = [
@@ -37,6 +37,27 @@ export async function exchangeCode(redirectUri: string, code: string) {
   const client = getOAuthClient(redirectUri);
   const { tokens } = await client.getToken(code);
   return tokens;
+}
+
+/** HH:MM no fuso de Brasília, a partir de um dateTime ISO do Google. */
+export function horarioBrasil(iso: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/**
+ * O link de vídeo pode vir em hangoutLink (formato antigo, mais comum de
+ * achar preenchido) ou dentro de conferenceData.entryPoints (formato atual
+ * do Google) - tenta os dois, nessa ordem.
+ */
+export function linkDaVideochamada(evento: calendar_v3.Schema$Event): string | null {
+  if (evento.hangoutLink) return evento.hangoutLink;
+  const entryPoints = evento.conferenceData?.entryPoints ?? [];
+  const video = entryPoints.find((e) => e.entryPointType === "video");
+  return video?.uri ?? null;
 }
 
 export type GoogleTokens = {

@@ -195,7 +195,9 @@ export default function AlunosLista({
               </div>
               <div className="flex flex-col gap-1 text-[13px] text-muted">
                 <span>
-                  {proxima ? `Próxima aula: ${proxima.data}` : "Sem próxima aula agendada"}
+                  {proxima
+                    ? `Próxima aula: ${proxima.data}${proxima.horario ? ` · ${proxima.horario}` : ""}`
+                    : "Sem próxima aula agendada"}
                 </span>
                 {pendencias > 0 && <span className="text-brand">{pendencias} tarefa(s) pendente(s)</span>}
               </div>

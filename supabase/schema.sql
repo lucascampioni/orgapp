@@ -611,3 +611,7 @@ create policy "google_conexoes_all_own" on public.google_conexoes for all to aut
 drop policy if exists "google_vinculos_all_own" on public.google_vinculos;
 create policy "google_vinculos_all_own" on public.google_vinculos for all to authenticated
   using (professor_id = auth.uid()) with check (professor_id = auth.uid());
+
+-- Horário da aula (a data já existia, mas era só a data sem hora - útil
+-- pra aulas importadas do Google Calendar, que sempre têm hora marcada).
+alter table public.aulas add column if not exists horario text;

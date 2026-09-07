@@ -165,6 +165,7 @@ export default function DashboardHome({
                     <div className="text-xs text-muted">
                       {a.titulo}
                       {a.data ? ` · ${a.data}` : ""}
+                      {a.horario ? ` · ${a.horario}` : ""}
                     </div>
                   </div>
                   {aluno?.nivel_cefr && (

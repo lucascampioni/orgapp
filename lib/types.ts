@@ -58,6 +58,7 @@ export interface Aula {
   turma_id: string | null;
   titulo: string;
   data: string | null;
+  horario: string | null;
   objetivo: string | null;
   conteudo: string | null;
   status: AulaStatus;

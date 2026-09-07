@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { calendar_v3 } from "googleapis";
 import { createClient } from "@/lib/supabase/server";
-import { carregarClienteCalendar } from "@/lib/google";
+import { carregarClienteCalendar, horarioBrasil, linkDaVideochamada } from "@/lib/google";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
       const chave = e.recurringEventId ?? e.id;
       const vinculo = chave ? vinculoPorGoogleId.get(chave) : undefined;
       if (!vinculo || !e.id) return null;
-      const data = (e.start?.dateTime ?? e.start?.date ?? "").slice(0, 10);
+      const inicioEvento = e.start?.dateTime ?? e.start?.date ?? "";
+      const data = inicioEvento.slice(0, 10);
       if (!data) return null;
       return {
         aluno_id: vinculo.aluno_id as string,
@@ -71,8 +72,9 @@ export async function POST(request: NextRequest) {
         turma_id: null,
         titulo: vinculo.titulo || e.summary || "Aula",
         data,
+        horario: e.start?.dateTime ? horarioBrasil(e.start.dateTime) : null,
         status: "planejada" as const,
-        meet_link: e.hangoutLink ?? null,
+        meet_link: linkDaVideochamada(e),
         google_event_id: e.id,
       };
     })

@@ -45,6 +45,7 @@ export default function AulaModal({
   const [alunoId, setAlunoId] = useState(aula.aluno_id ?? "");
   const [turmaId, setTurmaId] = useState(aula.turma_id ?? "");
   const [data, setData] = useState(aula.data ?? "");
+  const [horario, setHorario] = useState(aula.horario ?? "");
   const [status, setStatus] = useState<AulaStatus>(aula.status);
   const [objetivo, setObjetivo] = useState(aula.objetivo ?? "");
   const [conteudo, setConteudo] = useState(aula.conteudo ?? "");
@@ -61,6 +62,7 @@ export default function AulaModal({
       aluno_id: alunoId || null,
       turma_id: turmaId || null,
       data: data || null,
+      horario: horario.trim() || null,
       status,
       objetivo: objetivo.trim() || null,
       conteudo: conteudo.trim() || null,
@@ -130,6 +132,13 @@ export default function AulaModal({
           value={data}
           onChange={(e) => setData(e.target.value)}
           className={inputClass}
+        />
+        <input
+          type="time"
+          value={horario}
+          onChange={(e) => setHorario(e.target.value)}
+          className={inputClass}
+          style={{ width: "auto" }}
         />
         <select
           value={status}
