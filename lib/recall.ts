@@ -27,7 +27,14 @@ function authHeaders() {
   };
 }
 
-export async function createBot(meetingUrl: string, webhookUrl: string) {
+/**
+ * joinAt (ISO 8601) agenda o bot pra entrar sozinho nesse horário em vez de
+ * entrar imediatamente - usa o campo nativo de agendamento da Recall.ai.
+ * Escrito sem acesso à doc ao vivo (mesma ressalva do topo do arquivo); se
+ * a Recall recusar o campo, o erro 400 devolvido aqui deve dizer o nome
+ * certo do campo.
+ */
+export async function createBot(meetingUrl: string, webhookUrl: string, joinAt?: string) {
   const res = await fetch(`${RECALL_API_BASE}/bot/`, {
     method: "POST",
     headers: authHeaders(),
@@ -35,6 +42,7 @@ export async function createBot(meetingUrl: string, webhookUrl: string) {
       meeting_url: meetingUrl,
       bot_name: "Painel da Professora",
       webhook_url: webhookUrl,
+      ...(joinAt ? { join_at: joinAt } : {}),
       // O campo antigo "transcription_options" foi descontinuado pela
       // Recall.ai (dava 400 "This field is not allowed"). No formato atual
       // a transcrição precisa ser pedida por bot em recording_config -

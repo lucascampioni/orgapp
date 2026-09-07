@@ -206,17 +206,25 @@ export default function AulaModal({
         )}
 
         {aula.meet_link && !aula.recall_bot_id && (
-          <button onClick={handleIniciarGravacao} disabled={gravacaoLoading} className={primaryButtonClass}>
-            {gravacaoLoading ? "Iniciando..." : "🎥 Iniciar gravação com IA"}
-          </button>
+          <>
+            <p className="mb-2 text-xs text-muted">
+              {aula.data && aula.horario
+                ? "O bot entra sozinho 1 minuto antes do horário marcado. Se quiser começar agora mesmo, use o botão abaixo."
+                : "Defina data e horário acima pra o bot entrar sozinho, ou adicione manualmente agora."}
+            </p>
+            <button onClick={handleIniciarGravacao} disabled={gravacaoLoading} className={primaryButtonClass}>
+              {gravacaoLoading ? "Iniciando..." : "🎥 Adicionar manualmente agora"}
+            </button>
+          </>
         )}
 
         {gravacaoErro && <p className="mt-2 text-xs text-danger">{gravacaoErro}</p>}
 
         {aula.recall_bot_id && !aula.resumo_ia && (
           <p className="text-xs text-muted">
-            Gravação iniciada. O resumo aparece aqui automaticamente quando a aula terminar
-            (clique em Atualizar pra checar).
+            Bot agendado para essa aula (entra sozinho 1 min antes do horário, ou já pode ter
+            entrado). O resumo aparece aqui automaticamente quando a aula terminar (clique em
+            Atualizar pra checar).
           </p>
         )}
 

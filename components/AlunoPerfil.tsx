@@ -170,6 +170,20 @@ export default function AlunoPerfil({
     if (error) {
       console.error("Falha ao atualizar aula", error);
       setAulas(prevAulas);
+      return;
+    }
+    // Se a aula agora tem link+data+horário, agenda o bot pra entrar
+    // sozinho 1 min antes - sem precisar clicar em "iniciar gravação".
+    if (fields.meet_link || fields.data || fields.horario || fields.status) {
+      const res = await fetch("/api/recall/agendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aulaId: id }),
+      });
+      const body = (await res.json()) as { botId?: string };
+      if (body.botId) {
+        setAulas((prev) => prev.map((a) => (a.id === id ? { ...a, recall_bot_id: body.botId! } : a)));
+      }
     }
   }
 
