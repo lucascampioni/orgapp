@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Webhook } from "standardwebhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { extractBotId, extractTranscriptId, getTranscriptText } from "@/lib/recall";
-import { summarize } from "@/lib/resumo-ia";
+import { summarize, extractVocabulario } from "@/lib/resumo-ia";
 
 export async function POST(request: NextRequest) {
   try {
@@ -87,10 +87,13 @@ async function handlePost(request: NextRequest) {
   let pontosMelhorar: string[];
   let sugestao: string;
   try {
-    const result = await summarize(transcript);
+    const [result, vocab] = await Promise.all([
+      summarize(transcript),
+      extractVocabulario(transcript),
+    ]);
     resumo = result.resumo;
     tarefas = result.tarefas;
-    vocabulario = result.vocabulario ?? [];
+    vocabulario = vocab;
     topicos = result.topicos ?? [];
     erros = result.erros ?? [];
     pontosPositivos = result.pontos_positivos ?? [];

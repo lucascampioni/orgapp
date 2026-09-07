@@ -3,7 +3,6 @@ import Anthropic from "@anthropic-ai/sdk";
 export type ResumoIA = {
   resumo: string;
   tarefas: string[];
-  vocabulario: { termo: string; significado?: string; exemplo?: string }[];
   topicos: string[];
   erros: {
     frase_original: string;
@@ -15,6 +14,8 @@ export type ResumoIA = {
   pontos_melhorar: string[];
   sugestao: string;
 };
+
+export type VocabularioItem = { termo: string; significado?: string; exemplo?: string };
 
 const SUMMARY_TOOL = {
   name: "salvar_resumo_aula",
@@ -33,26 +34,6 @@ const SUMMARY_TOOL = {
         items: { type: "string" },
         description:
           "Lista curta de tarefas de acompanhamento (revisar algo, praticar algo, preparar material) que ficaram combinadas ou implícitas na aula. Pode ser vazia.",
-      },
-      vocabulario: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            termo: { type: "string", description: "Palavra ou expressão em inglês." },
-            significado: {
-              type: "string",
-              description: "Tradução ou explicação curta em português.",
-            },
-            exemplo: {
-              type: "string",
-              description: "Frase de exemplo usada na aula, se houver.",
-            },
-          },
-          required: ["termo"],
-        },
-        description:
-          "Toda palavra ou expressão em inglês que a professora traduziu, explicou o significado ou deu como exemplo durante a aula - mesmo em aulas focadas em gramática (ex: ao explicar 'to be', a professora usa e traduz 'angry' e a expressão 'I get it' - isso conta como vocabulário). Não inclua palavras comuns que o aluno já claramente dominava sem precisar de explicação. IMPORTANTE: se o campo 'resumo' menciona alguma palavra/expressão sendo trabalhada, ela tem que aparecer aqui também - os dois campos precisam ser consistentes entre si. Pode ser vazia só se nenhuma palavra foi de fato explicada.",
       },
       topicos: {
         type: "array",
@@ -100,16 +81,7 @@ const SUMMARY_TOOL = {
           "Uma sugestão curta (1-2 frases) do que focar nas próximas aulas com esse aluno.",
       },
     },
-    required: [
-      "resumo",
-      "tarefas",
-      "vocabulario",
-      "topicos",
-      "erros",
-      "pontos_positivos",
-      "pontos_melhorar",
-      "sugestao",
-    ],
+    required: ["resumo", "tarefas", "topicos", "erros", "pontos_positivos", "pontos_melhorar", "sugestao"],
   },
 };
 
@@ -124,7 +96,7 @@ export async function summarize(transcript: string): Promise<ResumoIA> {
     messages: [
       {
         role: "user",
-        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, as tarefas de acompanhamento, o vocabulário novo ensinado, os tópicos abordados, os erros que o ALUNO cometeu ao falar inglês, os pontos positivos, os pontos a melhorar e uma sugestão pra próxima aula, usando a ferramenta disponível. Antes de responder, confira: toda palavra/expressão que você citar no resumo como tendo sido ensinada ou trabalhada também precisa estar listada no campo vocabulario - os dois campos não podem se contradizer.\n\nTranscrição:\n${transcript}`,
+        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, as tarefas de acompanhamento, os tópicos abordados, os erros que o ALUNO cometeu ao falar inglês, os pontos positivos, os pontos a melhorar e uma sugestão pra próxima aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
       },
     ],
   });
@@ -135,4 +107,67 @@ export async function summarize(transcript: string): Promise<ResumoIA> {
   }
 
   return toolUse.input as ResumoIA;
+}
+
+const VOCABULARIO_TOOL = {
+  name: "salvar_vocabulario",
+  description: "Salva a lista de palavras/expressões em inglês trabalhadas na aula.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      vocabulario: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            termo: { type: "string", description: "Palavra ou expressão em inglês." },
+            significado: {
+              type: "string",
+              description: "Tradução ou explicação curta em português.",
+            },
+            exemplo: {
+              type: "string",
+              description: "Frase de exemplo usada na aula, se houver.",
+            },
+          },
+          required: ["termo"],
+        },
+        description:
+          "Toda palavra ou expressão em inglês que apareceu sendo traduzida, explicada ou dada como exemplo durante a aula - mesmo brevemente, mesmo numa aula focada em gramática (ex: ao explicar o verbo 'to be', a professora traduz 'angry' ou usa a expressão 'I get it' - ambos contam). Não inclua palavras comuns que o aluno claramente já dominava sem precisar de explicação nenhuma. Releia a transcrição com atenção antes de decidir que está vazia - é raro uma aula não ter nenhuma palavra nova sendo trabalhada.",
+      },
+    },
+    required: ["vocabulario"],
+  },
+};
+
+/**
+ * Chamada separada só pra extrair vocabulário, em vez de um campo a mais
+ * dentro de summarize() - na prática o modelo era inconsistente tentando
+ * preencher 8 campos de uma vez (o resumo em texto livre mencionava
+ * palavras ensinadas, mas o array estruturado vinha vazio mesmo depois de
+ * reforçar a instrução). Isolar numa chamada com um único objetivo evita
+ * essa disputa de atenção entre os campos.
+ */
+export async function extractVocabulario(transcript: string): Promise<VocabularioItem[]> {
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 1024,
+    tools: [VOCABULARIO_TOOL],
+    tool_choice: { type: "tool", name: VOCABULARIO_TOOL.name },
+    messages: [
+      {
+        role: "user",
+        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Liste todo vocabulário (palavra ou expressão em inglês) que foi traduzido, explicado ou exemplificado durante a aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
+      },
+    ],
+  });
+
+  const toolUse = message.content.find((block) => block.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    throw new Error("Claude não retornou o vocabulário estruturado esperado");
+  }
+
+  return (toolUse.input as { vocabulario: VocabularioItem[] }).vocabulario ?? [];
 }

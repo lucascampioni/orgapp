@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getTranscriptIdFromBot, getTranscriptText } from "@/lib/recall";
-import { summarize } from "@/lib/resumo-ia";
+import { summarize, extractVocabulario } from "@/lib/resumo-ia";
 
 /**
  * Roda a extração de IA de novo pra uma aula já gravada (ex: quando o
@@ -69,8 +69,12 @@ export async function POST(request: NextRequest) {
   }
 
   let resultado;
+  let vocabulario;
   try {
-    resultado = await summarize(transcript);
+    [resultado, vocabulario] = await Promise.all([
+      summarize(transcript),
+      extractVocabulario(transcript),
+    ]);
   } catch (err) {
     console.error("Falha ao gerar resumo com IA", err);
     const detail = err instanceof Error ? err.message : String(err);
@@ -94,7 +98,6 @@ export async function POST(request: NextRequest) {
 
   if (aula.aluno_id) {
     await supabase.from("vocabulario").delete().eq("aula_id", aula.id);
-    const vocabulario = resultado.vocabulario ?? [];
     if (vocabulario.length > 0) {
       const { error: vocabError } = await supabase.from("vocabulario").insert(
         vocabulario.map((v) => ({
