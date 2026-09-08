@@ -14,7 +14,7 @@ export default function AlunoMeuPerfilView({
   userId,
   userEmail,
 }: {
-  aluno: Aluno | null;
+  aluno: Aluno;
   vinculos: AlunoProfessor[];
   userId: string;
   userEmail: string;
@@ -29,25 +29,34 @@ export default function AlunoMeuPerfilView({
     sexo: Sexo | null;
     contato: string | null;
   }) {
-    if (!aluno) return;
-    const { error } = await supabase.from("alunos").update(fields).eq("id", aluno.id);
+    // upsert (não update): contas antigas de aluno podem ainda não ter
+    // linha em alunos (o trigger que cria isso só existe pra cadastros
+    // feitos depois dele existir).
+    const { error } = await supabase
+      .from("alunos")
+      .upsert({ user_id: userId, ...fields }, { onConflict: "user_id" });
     if (error) {
       console.error("Falha ao salvar perfil", error);
       return;
     }
-    setAluno((cur) => (cur ? { ...cur, ...fields } : cur));
+    setAluno((cur) => ({ ...cur, ...fields }));
   }
 
   async function uploadFoto(file: File) {
-    if (!aluno) return;
     const url = await uploadAvatar(supabase, userId, file);
     if (!url) return;
-    const { error } = await supabase.from("alunos").update({ foto_url: url }).eq("id", aluno.id);
+    // Inclui nome mesmo aqui (não só foto_url) porque, se essa for a
+    // primeira vez que esse aluno salva algo (conta antiga sem linha em
+    // alunos ainda), o upsert vira um insert puro - e nome é obrigatório
+    // na tabela.
+    const { error } = await supabase
+      .from("alunos")
+      .upsert({ user_id: userId, nome: aluno.nome, foto_url: url }, { onConflict: "user_id" });
     if (error) {
       console.error("Falha ao salvar foto de perfil", error);
       return;
     }
-    setAluno((cur) => (cur ? { ...cur, foto_url: url } : cur));
+    setAluno((cur) => ({ ...cur, foto_url: url }));
   }
 
   return (
@@ -57,22 +66,15 @@ export default function AlunoMeuPerfilView({
       vinculoAtivoId={professorIdAtivo}
       onSelecionarVinculo={selecionarVinculo}
     >
-      {aluno ? (
-        <PerfilForm
-          nome={aluno.nome}
-          dataNascimento={aluno.data_nascimento}
-          sexo={aluno.sexo}
-          contato={aluno.contato}
-          fotoUrl={aluno.foto_url}
-          onSave={salvar}
-          onUploadFoto={uploadFoto}
-        />
-      ) : (
-        <div className="text-sm text-muted">
-          Nenhum perfil de aluno vinculado a essa conta ainda. Assim que uma professora te
-          convidar e você aceitar, seu perfil aparece aqui.
-        </div>
-      )}
+      <PerfilForm
+        nome={aluno.nome}
+        dataNascimento={aluno.data_nascimento}
+        sexo={aluno.sexo}
+        contato={aluno.contato}
+        fotoUrl={aluno.foto_url}
+        onSave={salvar}
+        onUploadFoto={uploadFoto}
+      />
     </AlunoShell>
   );
 }

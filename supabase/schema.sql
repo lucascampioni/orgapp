@@ -590,6 +590,21 @@ create policy "alunos_update_vinculado" on public.alunos for update to authentic
     where ap.aluno_id = alunos.id and ap.professor_id = auth.uid()
   ));
 
+-- O próprio aluno também pode editar o próprio perfil (nome, data de
+-- nascimento, sexo, contato, foto) mesmo antes de ter qualquer vínculo com
+-- uma professora - soma-se à policy acima, nunca substitui.
+drop policy if exists "alunos_update_self" on public.alunos;
+create policy "alunos_update_self" on public.alunos for update to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+-- Idem pro insert: usado pelo upsert em AlunoMeuPerfilView pra contas
+-- antigas de aluno que ainda não têm linha em alunos (o trigger que cria
+-- isso automaticamente só existe pra cadastros feitos depois dele).
+drop policy if exists "alunos_insert_self" on public.alunos;
+create policy "alunos_insert_self" on public.alunos for insert to authenticated
+  with check (user_id = auth.uid());
+
 drop policy if exists "aulas_all_own" on public.aulas;
 create policy "aulas_all_own" on public.aulas for all to authenticated
   using (professor_id = auth.uid()) with check (professor_id = auth.uid());
@@ -829,6 +844,80 @@ drop trigger if exists criar_perfil_professor_trigger on auth.users;
 create trigger criar_perfil_professor_trigger
   after insert on auth.users
   for each row execute function public.criar_perfil_professor();
+
+-- Mesma ideia pro cadastro de aluno: cria a linha em public.alunos com os
+-- dados coletados no formulário (nome, data de nascimento, sexo) assim que
+-- a conta é criada, em vez de só quando uma professora convida esse aluno -
+-- assim o aluno consegue ver e editar o próprio perfil mesmo sem nenhum
+-- vínculo ainda. Se já existir uma linha com esse e-mail (criada antes por
+-- uma professora via convite, ainda sem user_id), linka nela em vez de
+-- duplicar - mesma lógica de "encontra ou cria" usada em convidar_aluno.
+create or replace function public.criar_perfil_aluno()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_existente uuid;
+begin
+  if new.raw_user_meta_data->>'role' = 'aluno' then
+    select id into v_existente from public.alunos where lower(email) = lower(new.email);
+
+    if v_existente is not null then
+      update public.alunos set user_id = coalesce(user_id, new.id) where id = v_existente;
+    else
+      insert into public.alunos (nome, email, user_id, data_nascimento, sexo)
+      values (
+        coalesce(nullif(trim(new.raw_user_meta_data->>'nome'), ''), split_part(new.email, '@', 1)),
+        new.email,
+        new.id,
+        nullif(new.raw_user_meta_data->>'data_nascimento', '')::date,
+        nullif(new.raw_user_meta_data->>'sexo', '')
+      )
+      on conflict (user_id) where user_id is not null do nothing;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists criar_perfil_aluno_trigger on auth.users;
+create trigger criar_perfil_aluno_trigger
+  after insert on auth.users
+  for each row execute function public.criar_perfil_aluno();
+
+-- Backfill pra contas de aluno criadas antes desse trigger existir: cria a
+-- linha em public.alunos que nunca chegou a ser criada (mesma lógica do
+-- trigger acima).
+do $$
+declare
+  u record;
+  v_existente uuid;
+begin
+  for u in
+    select id, email, raw_user_meta_data
+    from auth.users au
+    where au.raw_user_meta_data->>'role' = 'aluno'
+      and not exists (select 1 from public.alunos a where a.user_id = au.id)
+  loop
+    select id into v_existente from public.alunos where lower(email) = lower(u.email);
+
+    if v_existente is not null then
+      update public.alunos set user_id = coalesce(user_id, u.id) where id = v_existente;
+    else
+      insert into public.alunos (nome, email, user_id, data_nascimento, sexo)
+      values (
+        coalesce(nullif(trim(u.raw_user_meta_data->>'nome'), ''), split_part(u.email, '@', 1)),
+        u.email,
+        u.id,
+        nullif(u.raw_user_meta_data->>'data_nascimento', '')::date,
+        nullif(u.raw_user_meta_data->>'sexo', '')
+      )
+      on conflict (user_id) where user_id is not null do nothing;
+    end if;
+  end loop;
+end $$;
 
 -- ---------------------------------------------------------------------
 -- Foto de perfil (professora e aluno) - guardada no bucket "avatars" do
