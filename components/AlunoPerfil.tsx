@@ -8,6 +8,7 @@ import type {
   Aluno,
   AlunoProfessor,
   Aula,
+  Convite,
   ErroAula,
   Pagamento,
   TarefaAula,
@@ -36,6 +37,7 @@ type AlunoSubTab = "geral" | "aulas" | "vocabulario" | "pagamentos";
 export default function AlunoPerfil({
   aluno: alunoInicial,
   vinculo,
+  convitePendente: convitePendenteInicial,
   initialAulas,
   initialTarefasAula,
   initialVocabulario,
@@ -44,6 +46,7 @@ export default function AlunoPerfil({
 }: {
   aluno: Aluno;
   vinculo: AlunoProfessor | null;
+  convitePendente: Convite | null;
   initialAulas: Aula[];
   initialTarefasAula: TarefaAula[];
   initialVocabulario: Vocabulario[];
@@ -52,6 +55,7 @@ export default function AlunoPerfil({
 }) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const [convitePendente, setConvitePendente] = useState<Convite | null>(convitePendenteInicial);
 
   const [aluno, setAluno] = useState<Aluno>(alunoInicial);
   const [aulas, setAulas] = useState<Aula[]>(initialAulas);
@@ -103,6 +107,7 @@ export default function AlunoPerfil({
       return { status: "erro", mensagem: error?.message ?? "Falha ao enviar convite" };
     }
     setAluno((cur) => ({ ...cur, email }));
+    setConvitePendente(data as Convite);
     return { status: "convite_enviado", mensagem: null };
   }
 
@@ -352,7 +357,11 @@ export default function AlunoPerfil({
         {aluno.contato && <div className="mt-0.5 text-[13px] text-muted">{aluno.contato}</div>}
       </div>
 
-      <AlunoContaBanner aluno={aluno} onVincularConta={vincularContaAluno} />
+      <AlunoContaBanner
+        aluno={aluno}
+        convitePendente={convitePendente}
+        onVincularConta={vincularContaAluno}
+      />
 
       <div className="mb-5 flex flex-wrap gap-2">
         <TabButton active={sub === "geral"} label="Visão geral" onClick={() => setSub("geral")} />
@@ -437,9 +446,11 @@ export default function AlunoPerfil({
 
 function AlunoContaBanner({
   aluno,
+  convitePendente,
   onVincularConta,
 }: {
   aluno: Aluno;
+  convitePendente: Convite | null;
   onVincularConta: (email: string) => Promise<VincularContaResultado>;
 }) {
   const [emailAluno, setEmailAluno] = useState(aluno.email ?? "");
@@ -466,6 +477,42 @@ function AlunoContaBanner({
           conta vinculada
         </span>
         <span className="text-xs text-muted">Este aluno já tem cadastro no Lumina.</span>
+      </div>
+    );
+  }
+
+  if (convitePendente) {
+    return (
+      <div className="mb-5 rounded-xl border-2 border-violet bg-violet/5 p-4">
+        <div className="mb-1 flex items-center gap-2">
+          <span className="shrink-0 rounded-full border border-violet px-2 py-0.5 text-[10px] font-medium text-violet">
+            aguardando aceite
+          </span>
+          <div className="text-sm font-semibold text-ink">
+            Convite enviado pra {convitePendente.email}
+          </div>
+        </div>
+        <p className="mb-3 text-xs text-muted">
+          Assim que o aluno aceitar (na conta dele, com esse e-mail), a conta de login fica
+          vinculada. Você já pode editar a aba dele normalmente enquanto isso.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="email"
+            value={emailAluno}
+            onChange={(e) => setEmailAluno(e.target.value)}
+            placeholder="e-mail da conta do aluno"
+            className={`min-w-[180px] flex-1 ${inputClass}`}
+          />
+          <button
+            onClick={handleVincularConta}
+            disabled={vinculando || !emailAluno.trim()}
+            className={secondaryButtonClass}
+          >
+            {vinculando ? "Reenviando..." : "Reenviar convite"}
+          </button>
+        </div>
+        {msgVinculo && <div className="mt-2 text-xs text-muted">{msgVinculo}</div>}
       </div>
     );
   }
