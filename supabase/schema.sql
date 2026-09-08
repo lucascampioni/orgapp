@@ -47,6 +47,10 @@ alter table public.alunos add column if not exists objetivo text check (
 );
 alter table public.alunos add column if not exists pontos_fortes text;
 alter table public.alunos add column if not exists pontos_desenvolver text;
+alter table public.alunos add column if not exists data_nascimento date;
+alter table public.alunos add column if not exists sexo text check (
+  sexo in ('feminino', 'masculino', 'outro', 'prefiro_nao_dizer')
+);
 
 -- Vínculo many-to-many entre aluno e professora. turma_id aqui (não em
 -- aluno) porque a mesma turma só faz sentido do ponto de vista de quem
@@ -648,3 +652,96 @@ create policy "google_vinculos_all_own" on public.google_vinculos for all to aut
 -- Horário da aula (a data já existia, mas era só a data sem hora - útil
 -- pra aulas importadas do Google Calendar, que sempre têm hora marcada).
 alter table public.aulas add column if not exists horario text;
+
+-- ---------------------------------------------------------------------
+-- Perfil da professora + cadastro fechado (só quem o admin liberou pode
+-- criar conta de professora - ver README pra como liberar um e-mail).
+-- ---------------------------------------------------------------------
+
+create table if not exists public.professores (
+  id uuid primary key references auth.users(id) on delete cascade,
+  nome text not null,
+  data_nascimento date,
+  sexo text check (sexo in ('feminino', 'masculino', 'outro', 'prefiro_nao_dizer')),
+  criado_em timestamptz not null default now()
+);
+
+alter table public.professores enable row level security;
+
+drop policy if exists "professores_select_own" on public.professores;
+create policy "professores_select_own" on public.professores for select to authenticated
+  using (id = auth.uid());
+
+drop policy if exists "professores_update_own" on public.professores;
+create policy "professores_update_own" on public.professores for update to authenticated
+  using (id = auth.uid()) with check (id = auth.uid());
+
+-- Lista de e-mails liberados pelo admin pra virar professora. Sem policy
+-- nenhuma de propósito - só a função abaixo (security definer) enxerga essa
+-- tabela; ninguém autenticado consegue ler ou escrever nela direto pela API.
+-- Pra liberar um e-mail: insert into public.professoras_permitidas (email)
+-- values ('email@exemplo.com');
+create table if not exists public.professoras_permitidas (
+  id uuid primary key default gen_random_uuid(),
+  email text not null unique,
+  nome text,
+  criado_em timestamptz not null default now()
+);
+
+alter table public.professoras_permitidas enable row level security;
+
+-- Roda ANTES do Supabase criar a conta em auth.users: se não for cadastro
+-- de aluno (sem role='aluno' nos metadados) e o e-mail não estiver
+-- liberado, cancela a criação da conta levantando uma exceção. O app
+-- reconhece essa mensagem específica pra mostrar um aviso amigável.
+create or replace function public.checar_professora_liberada()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.raw_user_meta_data->>'role' is distinct from 'aluno' then
+    if not exists (
+      select 1 from public.professoras_permitidas where lower(email) = lower(new.email)
+    ) then
+      raise exception 'professora_nao_liberada' using errcode = 'P0001';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists checar_professora_liberada_trigger on auth.users;
+create trigger checar_professora_liberada_trigger
+  before insert on auth.users
+  for each row execute function public.checar_professora_liberada();
+
+-- Roda DEPOIS que a conta é criada em auth.users: se for cadastro de
+-- professora (passou pela checagem acima), cria o perfil correspondente em
+-- public.professores a partir dos metadados enviados no signUp.
+create or replace function public.criar_perfil_professor()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.raw_user_meta_data->>'role' is distinct from 'aluno' then
+    insert into public.professores (id, nome, data_nascimento, sexo)
+    values (
+      new.id,
+      coalesce(nullif(trim(new.raw_user_meta_data->>'nome'), ''), split_part(new.email, '@', 1)),
+      nullif(new.raw_user_meta_data->>'data_nascimento', '')::date,
+      nullif(new.raw_user_meta_data->>'sexo', '')
+    )
+    on conflict (id) do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists criar_perfil_professor_trigger on auth.users;
+create trigger criar_perfil_professor_trigger
+  after insert on auth.users
+  for each row execute function public.criar_perfil_professor();

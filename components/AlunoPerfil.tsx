@@ -26,6 +26,7 @@ import {
 } from "@/components/ui";
 import { NIVEIS_CEFR } from "@/lib/cefr";
 import { OBJETIVOS } from "@/lib/objetivos";
+import { SEXOS } from "@/lib/sexo";
 
 type VincularContaResultado = {
   status: "vinculado" | "nao_encontrado" | "sem_email" | "email_em_uso" | "conta_em_uso" | "erro";
@@ -78,6 +79,8 @@ export default function AlunoPerfil({
         | "objetivo"
         | "pontos_fortes"
         | "pontos_desenvolver"
+        | "data_nascimento"
+        | "sexo"
       >
     >,
   ) {
@@ -499,7 +502,14 @@ function AlunoGeral({
     fields: Partial<
       Pick<
         Aluno,
-        "contato" | "observacoes" | "nivel_cefr" | "objetivo" | "pontos_fortes" | "pontos_desenvolver"
+        | "contato"
+        | "observacoes"
+        | "nivel_cefr"
+        | "objetivo"
+        | "pontos_fortes"
+        | "pontos_desenvolver"
+        | "data_nascimento"
+        | "sexo"
       >
     >,
   ) => void;
@@ -596,6 +606,33 @@ function AlunoGeral({
             {OBJETIVOS.map((o) => (
               <option key={o.key} value={o.key}>
                 {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Data de nascimento</label>
+          <input
+            type="date"
+            defaultValue={aluno.data_nascimento ?? ""}
+            onChange={(e) => onUpdateAluno({ data_nascimento: e.target.value || null })}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Sexo</label>
+          <select
+            defaultValue={aluno.sexo ?? ""}
+            onChange={(e) => onUpdateAluno({ sexo: (e.target.value || null) as Aluno["sexo"] })}
+            className={inputClass}
+          >
+            <option value="">Não definido</option>
+            {SEXOS.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
               </option>
             ))}
           </select>

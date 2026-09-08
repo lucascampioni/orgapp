@@ -28,6 +28,8 @@ export interface Turma {
   criado_em: string;
 }
 
+export type Sexo = "feminino" | "masculino" | "outro" | "prefiro_nao_dizer";
+
 export interface Aluno {
   id: string;
   nome: string;
@@ -39,6 +41,16 @@ export interface Aluno {
   objetivo: ObjetivoAluno | null;
   pontos_fortes: string | null;
   pontos_desenvolver: string | null;
+  data_nascimento: string | null;
+  sexo: Sexo | null;
+  criado_em: string;
+}
+
+export interface Professor {
+  id: string;
+  nome: string;
+  data_nascimento: string | null;
+  sexo: Sexo | null;
   criado_em: string;
 }
 

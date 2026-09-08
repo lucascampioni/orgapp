@@ -6,6 +6,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
+import { inputClass, labelClass } from "@/components/ui";
+import { SEXOS } from "@/lib/sexo";
+import type { Sexo } from "@/lib/types";
 
 type Escolha = "escolha" | "professora" | "aluno";
 
@@ -42,17 +45,7 @@ export default function CadastroForm() {
         </div>
       )}
 
-      {tipo === "professora" && (
-        <div>
-          <p className="mb-4 text-sm text-muted">
-            Contas de professora ainda são criadas manualmente. Entre em contato com a
-            administração do Lumina pra pedir a sua.
-          </p>
-          <button onClick={() => setTipo("escolha")} className="text-sm text-brand hover:underline">
-            ← Voltar
-          </button>
-        </div>
-      )}
+      {tipo === "professora" && <ProfessoraSignupForm onVoltar={() => setTipo("escolha")} />}
 
       {tipo === "aluno" && <AlunoSignupForm onVoltar={() => setTipo("escolha")} />}
 
@@ -145,6 +138,151 @@ function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
+        placeholder="••••••••"
+      />
+
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink transition hover:bg-brand-strong disabled:opacity-60"
+      >
+        {loading ? "Criando conta..." : "Criar conta"}
+      </button>
+
+      <button
+        type="button"
+        onClick={onVoltar}
+        className="mt-3 w-full text-center text-sm text-muted hover:text-ink"
+      >
+        ← Voltar
+      </button>
+    </form>
+  );
+}
+
+const MSG_NAO_LIBERADA =
+  "Só quem foi liberado pelo administrador pode criar conta de professora. Entre em contato com a administração do Lumina pra pedir acesso.";
+
+function ProfessoraSignupForm({ onVoltar }: { onVoltar: () => void }) {
+  const router = useRouter();
+  const [nome, setNome] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [sexo, setSexo] = useState<Sexo | "">("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [aguardandoConfirmacao, setAguardandoConfirmacao] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          nome,
+          data_nascimento: dataNascimento || null,
+          sexo: sexo || null,
+        },
+      },
+    });
+
+    if (error) {
+      setLoading(false);
+      // O bloqueio de conta não liberada acontece num trigger do banco (ver
+      // schema.sql); não dá pra garantir com 100% de certeza que o
+      // Supabase repassa essa mensagem específica sem alterar (às vezes
+      // erros de trigger em auth.users viram um "Database error..."
+      // genérico) - por isso o fallback pega qualquer coisa que pareça
+      // vir desse bloqueio, mas se não bater com nada, mostra o erro cru.
+      const msg = error.message.toLowerCase();
+      if (msg.includes("professora_nao_liberada") || msg.includes("database error saving new user")) {
+        setError(MSG_NAO_LIBERADA);
+      } else {
+        setError(error.message);
+      }
+      return;
+    }
+
+    if (!data.session) {
+      setLoading(false);
+      setAguardandoConfirmacao(true);
+      return;
+    }
+
+    router.replace("/");
+    router.refresh();
+  }
+
+  if (aguardandoConfirmacao) {
+    return (
+      <p className="text-sm text-muted">
+        Confira seu e-mail pra confirmar a conta antes de entrar.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <label className={labelClass}>Nome</label>
+      <input
+        required
+        value={nome}
+        onChange={(e) => setNome(e.target.value)}
+        className={`mb-4 ${inputClass}`}
+        placeholder="Seu nome"
+      />
+
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Data de nascimento</label>
+          <input
+            type="date"
+            value={dataNascimento}
+            onChange={(e) => setDataNascimento(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Sexo</label>
+          <select value={sexo} onChange={(e) => setSexo(e.target.value as Sexo | "")} className={inputClass}>
+            <option value="">Não informar</option>
+            {SEXOS.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <label className={labelClass}>E-mail</label>
+      <input
+        type="email"
+        required
+        autoComplete="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className={`mb-4 ${inputClass}`}
+        placeholder="voce@email.com"
+      />
+
+      <label className={labelClass}>Senha</label>
+      <input
+        type="password"
+        required
+        minLength={6}
+        autoComplete="new-password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        className={`mb-4 ${inputClass}`}
         placeholder="••••••••"
       />
 
