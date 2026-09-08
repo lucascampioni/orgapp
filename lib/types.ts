@@ -53,6 +53,7 @@ export interface Professor {
   data_nascimento: string | null;
   sexo: Sexo | null;
   foto_url: string | null;
+  contato: string | null;
   criado_em: string;
 }
 

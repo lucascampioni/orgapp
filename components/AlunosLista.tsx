@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Aluno, AlunoProfessor, Aula, Convite, TarefaAula } from "@/lib/types";
-import { hoje, inputClass, primaryButtonClass, TabButton } from "@/components/ui";
+import { hoje, inputClass, primaryButtonClass } from "@/components/ui";
 
 export default function AlunosLista({
   initialAlunos,
@@ -27,11 +27,8 @@ export default function AlunosLista({
 
   const supabase = useMemo(() => createClient(), []);
 
-  async function addAluno(nome: string, contato: string) {
-    const { data, error } = await supabase.rpc("criar_aluno", {
-      p_nome: nome,
-      p_contato: contato.trim() || null,
-    });
+  async function addAluno(nome: string) {
+    const { data, error } = await supabase.rpc("criar_aluno", { p_nome: nome });
     if (error || !data) {
       console.error("Falha ao adicionar aluno", error);
       return;
@@ -60,7 +57,6 @@ export default function AlunosLista({
   }
 
   const [nome, setNome] = useState("");
-  const [contato, setContato] = useState("");
   const [saving, setSaving] = useState(false);
   const [jaTemCadastro, setJaTemCadastro] = useState(false);
   const [emailConvite, setEmailConvite] = useState("");
@@ -70,10 +66,9 @@ export default function AlunosLista({
   async function handleAdd() {
     if (!nome.trim()) return;
     setSaving(true);
-    await addAluno(nome.trim(), contato);
+    await addAluno(nome.trim());
     setSaving(false);
     setNome("");
-    setContato("");
   }
 
   async function handleConvidar() {
@@ -96,26 +91,20 @@ export default function AlunosLista({
       <h1 className="mb-4 font-display text-2xl font-semibold text-ink">Alunos</h1>
 
       <div className="mb-6 rounded-xl border border-border bg-surface p-3">
-        <div className="mb-3 flex gap-2">
-          <TabButton
-            active={!jaTemCadastro}
-            label="Aluno novo"
-            onClick={() => {
-              setJaTemCadastro(false);
+        <label className="mb-3 flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={jaTemCadastro}
+            onChange={(e) => {
+              setJaTemCadastro(e.target.checked);
               setErroConvite(null);
             }}
+            className="h-4 w-4"
           />
-          <TabButton
-            active={jaTemCadastro}
-            label="Já tem cadastro"
-            onClick={() => {
-              setJaTemCadastro(true);
-              setErroConvite(null);
-            }}
-          />
-        </div>
+          Esse aluno já tem cadastro no Lumina
+        </label>
 
-        {!jaTemCadastro && (
+        {!jaTemCadastro ? (
           <div className="flex flex-wrap gap-2">
             <input
               type="text"
@@ -124,20 +113,11 @@ export default function AlunosLista({
               placeholder="Nome do aluno..."
               className={`min-w-[160px] flex-1 ${inputClass}`}
             />
-            <input
-              type="text"
-              value={contato}
-              onChange={(e) => setContato(e.target.value)}
-              placeholder="Contato (opcional)"
-              className={`min-w-[160px] flex-1 ${inputClass}`}
-            />
             <button onClick={handleAdd} disabled={saving} className={primaryButtonClass}>
               Adicionar aluno
             </button>
           </div>
-        )}
-
-        {jaTemCadastro && (
+        ) : (
           <div>
             <div className="flex flex-wrap gap-2">
               <input

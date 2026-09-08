@@ -17,7 +17,12 @@ export default function ProfessorPerfilView({
   const [professor, setProfessor] = useState(professorInicial);
   const supabase = useMemo(() => createClient(), []);
 
-  async function salvar(fields: { nome: string; data_nascimento: string | null; sexo: Sexo | null }) {
+  async function salvar(fields: {
+    nome: string;
+    data_nascimento: string | null;
+    sexo: Sexo | null;
+    contato: string | null;
+  }) {
     // upsert (não update): contas antigas de professora podem ainda não
     // ter linha em professores (o trigger que cria isso só existe pra
     // cadastros feitos depois dele existir).
@@ -52,6 +57,7 @@ export default function ProfessorPerfilView({
         nome={professor.nome}
         dataNascimento={professor.data_nascimento}
         sexo={professor.sexo}
+        contato={professor.contato}
         fotoUrl={professor.foto_url}
         onSave={salvar}
         onUploadFoto={uploadFoto}

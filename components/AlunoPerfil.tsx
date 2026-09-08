@@ -65,14 +65,7 @@ export default function AlunoPerfil({
     fields: Partial<
       Pick<
         Aluno,
-        | "contato"
-        | "observacoes"
-        | "nome"
-        | "email"
-        | "nivel_cefr"
-        | "objetivo"
-        | "pontos_fortes"
-        | "pontos_desenvolver"
+        "observacoes" | "nome" | "email" | "nivel_cefr" | "objetivo" | "pontos_fortes" | "pontos_desenvolver"
       >
     >,
   ) {
@@ -457,12 +450,7 @@ function AlunoGeral({
   proximaAula: Aula | null;
   pendencias: number;
   onUpdateAluno: (
-    fields: Partial<
-      Pick<
-        Aluno,
-        "contato" | "observacoes" | "nivel_cefr" | "objetivo" | "pontos_fortes" | "pontos_desenvolver"
-      >
-    >,
+    fields: Partial<Pick<Aluno, "observacoes" | "nivel_cefr" | "objetivo" | "pontos_fortes" | "pontos_desenvolver">>,
   ) => void;
   onDesvincular: () => void;
   onCompartilhar: (email: string) => Promise<string | null>;
@@ -514,14 +502,6 @@ function AlunoGeral({
           <div className="mt-1 text-sm text-ink">{pendencias}</div>
         </div>
       </div>
-
-      <label className={labelClass}>Contato</label>
-      <input
-        defaultValue={aluno.contato ?? ""}
-        onBlur={(e) => onUpdateAluno({ contato: e.target.value.trim() || null })}
-        placeholder="Telefone, WhatsApp..."
-        className={`mb-3 ${inputClass}`}
-      />
 
       <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div>

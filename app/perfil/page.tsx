@@ -46,6 +46,7 @@ export default async function PerfilPage() {
     data_nascimento: null,
     sexo: null,
     foto_url: null,
+    contato: null,
     criado_em: new Date().toISOString(),
   };
 

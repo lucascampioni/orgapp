@@ -9,6 +9,7 @@ export default function PerfilForm({
   nome: nomeInicial,
   dataNascimento: dataNascimentoInicial,
   sexo: sexoInicial,
+  contato: contatoInicial,
   fotoUrl,
   onSave,
   onUploadFoto,
@@ -16,13 +17,20 @@ export default function PerfilForm({
   nome: string;
   dataNascimento: string | null;
   sexo: Sexo | null;
+  contato: string | null;
   fotoUrl: string | null;
-  onSave: (fields: { nome: string; data_nascimento: string | null; sexo: Sexo | null }) => Promise<void>;
+  onSave: (fields: {
+    nome: string;
+    data_nascimento: string | null;
+    sexo: Sexo | null;
+    contato: string | null;
+  }) => Promise<void>;
   onUploadFoto: (file: File) => Promise<void>;
 }) {
   const [nome, setNome] = useState(nomeInicial);
   const [dataNascimento, setDataNascimento] = useState(dataNascimentoInicial ?? "");
   const [sexo, setSexo] = useState<Sexo | "">(sexoInicial ?? "");
+  const [contato, setContato] = useState(contatoInicial ?? "");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [enviandoFoto, setEnviandoFoto] = useState(false);
@@ -36,6 +44,7 @@ export default function PerfilForm({
       nome: nome.trim(),
       data_nascimento: dataNascimento || null,
       sexo: sexo || null,
+      contato: contato.trim() || null,
     });
     setSaving(false);
     setMsg("Perfil atualizado.");
@@ -83,6 +92,14 @@ export default function PerfilForm({
 
       <label className={labelClass}>Nome</label>
       <input value={nome} onChange={(e) => setNome(e.target.value)} className={`mb-3 ${inputClass}`} />
+
+      <label className={labelClass}>Contato</label>
+      <input
+        value={contato}
+        onChange={(e) => setContato(e.target.value)}
+        placeholder="Telefone, WhatsApp..."
+        className={`mb-3 ${inputClass}`}
+      />
 
       <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div>

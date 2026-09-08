@@ -836,6 +836,11 @@ create trigger criar_perfil_professor_trigger
 alter table public.professores add column if not exists foto_url text;
 alter table public.alunos add column if not exists foto_url text;
 
+-- Contato (telefone/WhatsApp) é dado pessoal - só a própria pessoa
+-- preenche, no cadastro ou na aba "Meu perfil" (a professora não edita o
+-- contato do aluno, nem vice-versa).
+alter table public.professores add column if not exists contato text;
+
 insert into storage.buckets (id, name, public)
 values ('avatars', 'avatars', true)
 on conflict (id) do nothing;

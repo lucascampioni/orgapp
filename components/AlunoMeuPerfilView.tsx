@@ -21,7 +21,12 @@ export default function AlunoMeuPerfilView({
   const supabase = useMemo(() => createClient(), []);
   const [alunoAtivoId, selecionarAluno] = useAlunoAtivo(aluno ? [aluno] : []);
 
-  async function salvar(fields: { nome: string; data_nascimento: string | null; sexo: Sexo | null }) {
+  async function salvar(fields: {
+    nome: string;
+    data_nascimento: string | null;
+    sexo: Sexo | null;
+    contato: string | null;
+  }) {
     if (!aluno) return;
     const { error } = await supabase.from("alunos").update(fields).eq("id", aluno.id);
     if (error) {
@@ -55,6 +60,7 @@ export default function AlunoMeuPerfilView({
           nome={aluno.nome}
           dataNascimento={aluno.data_nascimento}
           sexo={aluno.sexo}
+          contato={aluno.contato}
           fotoUrl={aluno.foto_url}
           onSave={salvar}
           onUploadFoto={uploadFoto}
