@@ -453,6 +453,16 @@ begin
   left join public.professores p on p.id = u.id
   where u.id = auth.uid();
 
+  -- O vínculo (aluno_professor) já é criado aqui, na hora do convite - não
+  -- espera o aceite. Só a conta de login (alunos.user_id) depende do aceite
+  -- do aluno; a professora já pode editar a aba desse aluno (aulas,
+  -- vocabulário etc.) enquanto o convite fica "pendente" só como indicação
+  -- visual, não como bloqueio de acesso.
+  insert into public.aluno_professor (aluno_id, professor_id, idioma, professor_nome)
+  values (v_aluno_id, auth.uid(), v_idioma, v_professor_nome)
+  on conflict (aluno_id, professor_id) do update
+    set idioma = excluded.idioma, professor_nome = excluded.professor_nome;
+
   insert into public.convites (aluno_id, professor_id, professor_nome, email, idioma)
   values (v_aluno_id, auth.uid(), v_professor_nome, v_email, v_idioma)
   on conflict (aluno_id, professor_id) do update

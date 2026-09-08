@@ -56,7 +56,30 @@ export default function AlunosLista({
       console.error("Falha ao convidar aluno", error);
       return error?.message ?? "Falha ao enviar convite";
     }
-    setConvites((prev) => [data as Convite, ...prev.filter((c) => c.id !== (data as Convite).id)]);
+    const convite = data as Convite;
+    setConvites((prev) => [convite, ...prev.filter((c) => c.id !== convite.id)]);
+
+    // O vínculo (aluno_professor) já foi criado junto com o convite - a
+    // aba do aluno já pode ser editada mesmo antes do aceite, então o card
+    // já aparece aqui (com um selo de "convite pendente").
+    const [{ data: aluno }, { data: vinculo }] = await Promise.all([
+      supabase.from("alunos").select("*").eq("id", convite.aluno_id).single(),
+      supabase
+        .from("aluno_professor")
+        .select("*")
+        .eq("aluno_id", convite.aluno_id)
+        .eq("professor_id", convite.professor_id)
+        .single(),
+    ]);
+    if (aluno) {
+      setAlunos((prev) => (prev.some((a) => a.id === aluno.id) ? prev : [...prev, aluno as Aluno]));
+    }
+    if (vinculo) {
+      setAlunoProfessor((prev) => [
+        ...prev.filter((v) => v.id !== (vinculo as AlunoProfessor).id),
+        vinculo as AlunoProfessor,
+      ]);
+    }
     return null;
   }
 
@@ -153,32 +176,13 @@ export default function AlunosLista({
               </button>
             </div>
             <p className="mt-2 text-xs text-muted">
-              O aluno recebe um convite e só passa a aparecer aqui depois de aceitar - assim
-              não vinculamos ninguém sem confirmação.
+              O aluno já aparece na sua lista e você já pode editar a aba dele - só a conta de
+              login fica pendente até ele aceitar o convite.
             </p>
             {erroConvite && <p className="mt-2 text-xs text-danger">{erroConvite}</p>}
           </div>
         )}
       </div>
-
-      {convites.some((c) => c.status === "pendente") && (
-        <div className="mb-6">
-          <div className="mb-2 text-xs font-medium text-muted">Convites pendentes</div>
-          <div className="flex flex-col gap-1.5">
-            {convites
-              .filter((c) => c.status === "pendente")
-              .map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-muted"
-                >
-                  <span>{c.email}</span>
-                  <span className="text-xs">aguardando aceite</span>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {alunos.length === 0 && (
@@ -192,6 +196,7 @@ export default function AlunosLista({
           const pendencias = tarefasAula.filter(
             (t) => !t.concluida && minhasAulas.some((a) => a.id === t.aula_id),
           ).length;
+          const conviteAluno = convites.find((c) => c.aluno_id === aluno.id);
 
           return (
             <Link
@@ -206,6 +211,10 @@ export default function AlunosLista({
                 {aluno.user_id ? (
                   <span className="shrink-0 rounded-full border border-success px-2 py-0.5 text-[10px] font-medium text-success">
                     conta vinculada
+                  </span>
+                ) : conviteAluno?.status === "pendente" ? (
+                  <span className="shrink-0 rounded-full border border-violet px-2 py-0.5 text-[10px] font-medium text-violet">
+                    convite pendente
                   </span>
                 ) : (
                   <span className="shrink-0 rounded-full border border-brand px-2 py-0.5 text-[10px] font-medium text-brand">
