@@ -136,8 +136,15 @@ function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
         </div>
         <div>
           <label className={labelClass}>Sexo</label>
-          <select value={sexo} onChange={(e) => setSexo(e.target.value as Sexo | "")} className={inputClass}>
-            <option value="">Não informar</option>
+          <select
+            required
+            value={sexo}
+            onChange={(e) => setSexo(e.target.value as Sexo | "")}
+            className={inputClass}
+          >
+            <option value="" disabled hidden>
+              Selecione...
+            </option>
             {SEXOS.map((s) => (
               <option key={s.key} value={s.key}>
                 {s.label}
@@ -284,8 +291,15 @@ function ProfessoraSignupForm({ onVoltar }: { onVoltar: () => void }) {
         </div>
         <div>
           <label className={labelClass}>Sexo</label>
-          <select value={sexo} onChange={(e) => setSexo(e.target.value as Sexo | "")} className={inputClass}>
-            <option value="">Não informar</option>
+          <select
+            required
+            value={sexo}
+            onChange={(e) => setSexo(e.target.value as Sexo | "")}
+            className={inputClass}
+          >
+            <option value="" disabled hidden>
+              Selecione...
+            </option>
             {SEXOS.map((s) => (
               <option key={s.key} value={s.key}>
                 {s.label}
