@@ -214,7 +214,7 @@ export default function AlunosLista({
                   </span>
                 ) : conviteAluno?.status === "pendente" ? (
                   <span className="shrink-0 rounded-full border border-violet px-2 py-0.5 text-[10px] font-medium text-violet">
-                    convite pendente
+                    aguardando aceite
                   </span>
                 ) : (
                   <span className="shrink-0 rounded-full border border-brand px-2 py-0.5 text-[10px] font-medium text-brand">
