@@ -36,6 +36,7 @@ export default function AlunoShell({
   const supabase = useMemo(() => createClient(), []);
   const [convites, setConvites] = useState<Convite[]>([]);
   const [respondendo, setRespondendo] = useState<string | null>(null);
+  const [erroConvite, setErroConvite] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelado = false;
@@ -53,6 +54,7 @@ export default function AlunoShell({
 
   async function responderConvite(convite: Convite, aceitar: boolean) {
     setRespondendo(convite.id);
+    setErroConvite(null);
     const { error } = await supabase.rpc("responder_convite", {
       p_convite_id: convite.id,
       p_aceitar: aceitar,
@@ -60,6 +62,7 @@ export default function AlunoShell({
     setRespondendo(null);
     if (error) {
       console.error("Falha ao responder convite", error);
+      setErroConvite(error.message ?? "Falha ao responder o convite.");
       return;
     }
     setConvites((prev) => prev.filter((c) => c.id !== convite.id));
@@ -75,6 +78,7 @@ export default function AlunoShell({
     <div className="min-h-full">
       {convites.length > 0 && (
         <div className="flex flex-col gap-2 border-b border-border bg-surface p-3">
+          {erroConvite && <p className="text-xs text-danger">{erroConvite}</p>}
           {convites.map((c) => (
             <div
               key={c.id}
