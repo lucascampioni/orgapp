@@ -62,6 +62,8 @@ export default function CadastroForm() {
 function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
   const router = useRouter();
   const [nome, setNome] = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [sexo, setSexo] = useState<Sexo | "">("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +79,14 @@ function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { role: "aluno", nome } },
+      options: {
+        data: {
+          role: "aluno",
+          nome,
+          data_nascimento: dataNascimento || null,
+          sexo: sexo || null,
+        },
+      },
     });
 
     if (error) {
@@ -114,6 +123,29 @@ function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
         className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
         placeholder="Seu nome"
       />
+
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div>
+          <label className={labelClass}>Data de nascimento</label>
+          <input
+            type="date"
+            value={dataNascimento}
+            onChange={(e) => setDataNascimento(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Sexo</label>
+          <select value={sexo} onChange={(e) => setSexo(e.target.value as Sexo | "")} className={inputClass}>
+            <option value="">Não informar</option>
+            {SEXOS.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       <label className="mb-1 block text-xs font-medium text-muted">E-mail</label>
       <input

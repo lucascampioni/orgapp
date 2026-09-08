@@ -430,15 +430,22 @@ set search_path = public
 as $$
 declare
   v_email text;
+  v_metadata jsonb;
   v_count integer;
 begin
-  select email into v_email from auth.users where id = auth.uid();
+  select email, raw_user_meta_data into v_email, v_metadata from auth.users where id = auth.uid();
   if v_email is null then
     return 0;
   end if;
 
+  -- data_nascimento/sexo só preenchem se o registro ainda não tiver isso
+  -- (coalesce) - o que a professora já cadastrou manualmente tem prioridade
+  -- sobre o que o aluno informou no cadastro dele.
   update public.alunos
-  set user_id = auth.uid()
+  set
+    user_id = auth.uid(),
+    data_nascimento = coalesce(data_nascimento, nullif(v_metadata->>'data_nascimento', '')::date),
+    sexo = coalesce(sexo, nullif(v_metadata->>'sexo', ''))
   where user_id is null and email is not null and lower(email) = lower(v_email);
 
   get diagnostics v_count = row_count;
