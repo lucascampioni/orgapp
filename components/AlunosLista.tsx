@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { NIVEIS } from "@/lib/niveis";
-import type { Aluno, AlunoProfessor, Aula, Nivel, TarefaAula, Turma } from "@/lib/types";
+import type { Aluno, AlunoProfessor, Aula, Convite, Nivel, TarefaAula, Turma } from "@/lib/types";
 import { TabButton, hoje, inputClass, primaryButtonClass } from "@/components/ui";
 
 export default function AlunosLista({
@@ -13,12 +13,14 @@ export default function AlunosLista({
   initialAlunoProfessor,
   initialAulas,
   initialTarefasAula,
+  initialConvites,
 }: {
   initialTurmas: Turma[];
   initialAlunos: Aluno[];
   initialAlunoProfessor: AlunoProfessor[];
   initialAulas: Aula[];
   initialTarefasAula: TarefaAula[];
+  initialConvites: Convite[];
 }) {
   const [turmas, setTurmas] = useState<Turma[]>(initialTurmas);
   const [alunos, setAlunos] = useState<Aluno[]>(initialAlunos);
@@ -27,6 +29,7 @@ export default function AlunosLista({
   );
   const [aulas] = useState<Aula[]>(initialAulas);
   const [tarefasAula] = useState<TarefaAula[]>(initialTarefasAula);
+  const [convites, setConvites] = useState<Convite[]>(initialConvites);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -72,12 +75,26 @@ export default function AlunosLista({
     }
   }
 
+  async function convidarAluno(email: string): Promise<string | null> {
+    const { data, error } = await supabase.rpc("convidar_aluno", { p_email: email });
+    if (error || !data) {
+      console.error("Falha ao convidar aluno", error);
+      return error?.message ?? "Falha ao enviar convite";
+    }
+    setConvites((prev) => [data as Convite, ...prev.filter((c) => c.id !== (data as Convite).id)]);
+    return null;
+  }
+
   const [nome, setNome] = useState("");
   const [contato, setContato] = useState("");
   const [turmaId, setTurmaId] = useState("");
   const [saving, setSaving] = useState(false);
   const [filtroTurma, setFiltroTurma] = useState<string>("all");
   const [showNovaTurma, setShowNovaTurma] = useState(false);
+  const [jaTemCadastro, setJaTemCadastro] = useState(false);
+  const [emailConvite, setEmailConvite] = useState("");
+  const [erroConvite, setErroConvite] = useState<string | null>(null);
+  const [enviandoConvite, setEnviandoConvite] = useState(false);
 
   async function handleAdd() {
     if (!nome.trim()) return;
@@ -86,6 +103,19 @@ export default function AlunosLista({
     setSaving(false);
     setNome("");
     setContato("");
+  }
+
+  async function handleConvidar() {
+    if (!emailConvite.trim()) return;
+    setEnviandoConvite(true);
+    setErroConvite(null);
+    const erro = await convidarAluno(emailConvite.trim());
+    setEnviandoConvite(false);
+    if (erro) {
+      setErroConvite(erro);
+      return;
+    }
+    setEmailConvite("");
   }
 
   const visiveis = alunos.filter((a) => {
@@ -130,38 +160,102 @@ export default function AlunosLista({
         />
       )}
 
-      <div className="mb-6 flex flex-wrap gap-2 rounded-xl border border-border bg-surface p-3">
-        <input
-          type="text"
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          placeholder="Nome do aluno..."
-          className={`min-w-[160px] flex-1 ${inputClass}`}
-        />
-        <input
-          type="text"
-          value={contato}
-          onChange={(e) => setContato(e.target.value)}
-          placeholder="Contato (opcional)"
-          className={`min-w-[160px] flex-1 ${inputClass}`}
-        />
-        <select
-          value={turmaId}
-          onChange={(e) => setTurmaId(e.target.value)}
-          className={inputClass}
-          style={{ width: "auto" }}
-        >
-          <option value="">Sem turma</option>
-          {turmas.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.nome}
-            </option>
-          ))}
-        </select>
-        <button onClick={handleAdd} disabled={saving} className={primaryButtonClass}>
-          Adicionar aluno
-        </button>
+      <div className="mb-6 rounded-xl border border-border bg-surface p-3">
+        <div className="mb-3 flex gap-2">
+          <TabButton
+            active={!jaTemCadastro}
+            label="Aluno novo"
+            onClick={() => {
+              setJaTemCadastro(false);
+              setErroConvite(null);
+            }}
+          />
+          <TabButton
+            active={jaTemCadastro}
+            label="Já tem cadastro"
+            onClick={() => {
+              setJaTemCadastro(true);
+              setErroConvite(null);
+            }}
+          />
+        </div>
+
+        {!jaTemCadastro && (
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="text"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              placeholder="Nome do aluno..."
+              className={`min-w-[160px] flex-1 ${inputClass}`}
+            />
+            <input
+              type="text"
+              value={contato}
+              onChange={(e) => setContato(e.target.value)}
+              placeholder="Contato (opcional)"
+              className={`min-w-[160px] flex-1 ${inputClass}`}
+            />
+            <select
+              value={turmaId}
+              onChange={(e) => setTurmaId(e.target.value)}
+              className={inputClass}
+              style={{ width: "auto" }}
+            >
+              <option value="">Sem turma</option>
+              {turmas.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
+                </option>
+              ))}
+            </select>
+            <button onClick={handleAdd} disabled={saving} className={primaryButtonClass}>
+              Adicionar aluno
+            </button>
+          </div>
+        )}
+
+        {jaTemCadastro && (
+          <div>
+            <div className="flex flex-wrap gap-2">
+              <input
+                type="email"
+                value={emailConvite}
+                onChange={(e) => setEmailConvite(e.target.value)}
+                placeholder="E-mail do aluno..."
+                className={`min-w-[160px] flex-1 ${inputClass}`}
+              />
+              <button onClick={handleConvidar} disabled={enviandoConvite} className={primaryButtonClass}>
+                {enviandoConvite ? "Enviando..." : "Enviar convite"}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              O aluno recebe um convite e só passa a aparecer aqui depois de aceitar - assim
+              não vinculamos ninguém sem confirmação.
+            </p>
+            {erroConvite && <p className="mt-2 text-xs text-danger">{erroConvite}</p>}
+          </div>
+        )}
       </div>
+
+      {convites.some((c) => c.status === "pendente") && (
+        <div className="mb-6">
+          <div className="mb-2 text-xs font-medium text-muted">Convites pendentes</div>
+          <div className="flex flex-col gap-1.5">
+            {convites
+              .filter((c) => c.status === "pendente")
+              .map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-muted"
+                >
+                  <span>{c.email}</span>
+                  <span className="text-xs">aguardando aceite</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {visiveis.length === 0 && (

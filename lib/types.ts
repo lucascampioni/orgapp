@@ -54,6 +54,19 @@ export interface Professor {
   criado_em: string;
 }
 
+export type ConviteStatus = "pendente" | "aceito" | "recusado";
+
+export interface Convite {
+  id: string;
+  aluno_id: string;
+  professor_id: string;
+  professor_nome: string | null;
+  email: string;
+  status: ConviteStatus;
+  criado_em: string;
+  respondido_em: string | null;
+}
+
 export interface AlunoProfessor {
   id: string;
   aluno_id: string;

@@ -164,9 +164,6 @@ function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
         className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
         placeholder="voce@email.com"
       />
-      <p className="-mt-3 mb-4 text-xs text-faint">
-        Use o mesmo e-mail que sua professora cadastrou pra já ver suas aulas.
-      </p>
 
       <label className="mb-1 block text-xs font-medium text-muted">Senha</label>
       <input

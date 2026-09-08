@@ -4,6 +4,8 @@ Ferramenta (App Router + TypeScript + Tailwind) para professoras de inglês orga
 
 Cada professora só vê os alunos vinculados a ela; um mesmo aluno pode ser vinculado a mais de uma professora (por exemplo, duas professoras diferentes dando aula pro mesmo aluno) - nesse caso, o cadastro básico do aluno (nome/contato) é compartilhado, mas aulas, tarefas, vocabulário e pagamentos são particulares de cada vínculo.
 
+Vincular um aluno pelo e-mail (seja adicionando um "que já tem cadastro" ou vinculando a conta de um aluno já cadastrado só com o nome) nunca é automático - vira um **convite pendente** que aparece pro aluno assim que ele loga (com o nome da professora, botões de aceitar/recusar), e só depois de aceito é que o vínculo (e o acesso dele à própria conta) passa a valer.
+
 ### Configuração
 
 1. Copie `.env.example` para `.env.local` e preencha com as credenciais do seu projeto Supabase:

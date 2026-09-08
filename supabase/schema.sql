@@ -361,99 +361,165 @@ $$;
 
 grant execute on function public.vincular_aluno_por_email(uuid, text) to authenticated;
 
--- Chamada pela professora ao clicar em "Vincular" no e-mail do aluno: salva
--- o e-mail e já tenta achar a conta agora (em vez de só esperar o próximo
--- login do aluno pra rodar vincular_conta_aluno). Retorna 'vinculado',
--- 'nao_encontrado' (a pessoa ainda não criou a conta - o vínculo ainda
--- acontece sozinho quando ela criar), 'sem_email', 'email_em_uso' (o
--- e-mail já pertence a outro aluno) ou 'conta_em_uso' (essa conta de aluno
--- já está vinculada a outro cadastro - uma conta só pode ser um aluno).
-create or replace function public.vincular_conta_aluno_por_professora(
-  p_aluno_id uuid,
-  p_email text
+-- As duas funções abaixo (vincular_conta_aluno_por_professora e
+-- vincular_conta_aluno) vinculavam a conta do aluno automaticamente só por
+-- bater o e-mail, sem o aluno confirmar nada - trocadas pelo sistema de
+-- convite abaixo (tabela convites + convidar_aluno + responder_convite),
+-- onde o aluno precisa aceitar antes de qualquer vínculo virar valendo.
+drop function if exists public.vincular_conta_aluno_por_professora(uuid, text);
+drop function if exists public.vincular_conta_aluno();
+
+-- ---------------------------------------------------------------------
+-- Convites: toda vez que uma professora informa o e-mail de um aluno (seja
+-- criando um cadastro novo já com e-mail, seja vinculando o e-mail depois
+-- no perfil), isso vira um convite pendente em vez de um vínculo
+-- automático. O aluno só passa a aparecer pra essa professora (e só ganha
+-- acesso à própria conta) depois de aceitar.
+-- ---------------------------------------------------------------------
+
+create table if not exists public.convites (
+  id uuid primary key default gen_random_uuid(),
+  aluno_id uuid not null references public.alunos(id) on delete cascade,
+  professor_id uuid not null references auth.users(id) on delete cascade,
+  professor_nome text,
+  email text not null,
+  status text not null default 'pendente' check (status in ('pendente', 'aceito', 'recusado')),
+  criado_em timestamptz not null default now(),
+  respondido_em timestamptz,
+  unique (aluno_id, professor_id)
+);
+
+alter table public.convites enable row level security;
+
+drop policy if exists "convites_select_professor" on public.convites;
+create policy "convites_select_professor" on public.convites for select to authenticated
+  using (professor_id = auth.uid());
+
+-- O aluno enxerga convite endereçado ao e-mail da própria conta logada
+-- (auth.jwt() traz o e-mail sem precisar de select em auth.users aqui).
+drop policy if exists "convites_select_aluno" on public.convites;
+create policy "convites_select_aluno" on public.convites for select to authenticated
+  using (lower(email) = lower(auth.jwt() ->> 'email'));
+
+-- Chamada pela professora: com p_aluno_id (perfil que ela já tem - caso do
+-- "Vincular conta do aluno" no perfil) ou sem (caso do "aluno já tem
+-- cadastro" na hora de adicionar, aí acha/cria o registro pelo e-mail).
+-- Nos dois casos só cria o convite - o vínculo de verdade (aluno_professor
+-- e/ou user_id) só acontece quando o aluno aceitar, em responder_convite.
+create or replace function public.convidar_aluno(
+  p_email text,
+  p_nome text default null,
+  p_aluno_id uuid default null
 )
-returns text
+returns public.convites
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
   v_email text := nullif(trim(p_email), '');
-  v_user_id uuid;
+  v_aluno_id uuid := p_aluno_id;
+  v_professor_nome text;
+  v_convite public.convites;
 begin
-  if not exists (
+  if v_email is null then
+    raise exception 'E-mail é obrigatório';
+  end if;
+
+  if v_aluno_id is not null and not exists (
     select 1 from public.aluno_professor
-    where aluno_id = p_aluno_id and professor_id = auth.uid()
+    where aluno_id = v_aluno_id and professor_id = auth.uid()
   ) then
     raise exception 'Você não tem acesso a este aluno';
   end if;
 
-  begin
-    update public.alunos set email = v_email where id = p_aluno_id;
-  exception
-    when unique_violation then
-      return 'email_em_uso';
-  end;
-
-  if v_email is null then
-    return 'sem_email';
+  if v_aluno_id is null then
+    select id into v_aluno_id from public.alunos where lower(email) = lower(v_email);
   end if;
 
-  select id into v_user_id from auth.users where lower(email) = lower(v_email) limit 1;
-
-  if v_user_id is null then
-    return 'nao_encontrado';
+  if v_aluno_id is null then
+    insert into public.alunos (nome, email)
+    values (coalesce(nullif(trim(p_nome), ''), split_part(v_email, '@', 1)), v_email)
+    returning id into v_aluno_id;
+  else
+    begin
+      update public.alunos set email = v_email
+      where id = v_aluno_id and (email is null or lower(email) <> lower(v_email));
+    exception
+      when unique_violation then
+        raise exception 'Esse e-mail já está vinculado a outro aluno';
+    end;
   end if;
 
-  begin
-    update public.alunos set user_id = v_user_id where id = p_aluno_id;
-  exception
-    when unique_violation then
-      return 'conta_em_uso';
-  end;
+  -- Contas de professora criadas antes do cadastro público existir (ex: via
+  -- painel do Supabase) não têm linha em public.professores - cai pro
+  -- prefixo do e-mail nesse caso, pra nunca mostrar em branco pro aluno.
+  select coalesce(p.nome, split_part(u.email, '@', 1))
+  into v_professor_nome
+  from auth.users u
+  left join public.professores p on p.id = u.id
+  where u.id = auth.uid();
 
-  return 'vinculado';
+  insert into public.convites (aluno_id, professor_id, professor_nome, email)
+  values (v_aluno_id, auth.uid(), v_professor_nome, v_email)
+  on conflict (aluno_id, professor_id) do update
+    set email = excluded.email, professor_nome = excluded.professor_nome,
+        status = 'pendente', respondido_em = null, criado_em = now()
+  returning * into v_convite;
+
+  return v_convite;
 end;
 $$;
 
-grant execute on function public.vincular_conta_aluno_por_professora(uuid, text) to authenticated;
+grant execute on function public.convidar_aluno(text, text, uuid) to authenticated;
 
--- Chamada pela própria conta de aluno logo depois do cadastro: acha o
--- registro de aluno com o mesmo e-mail dessa conta e ainda sem user_id, e
--- vincula. Como um e-mail só pode estar em um aluno (índice único acima),
--- isso nunca linka mais de uma linha.
-create or replace function public.vincular_conta_aluno()
-returns integer
+-- Chamada pelo aluno pra aceitar ou recusar um convite endereçado a ele.
+-- Aceitar cria o vínculo aluno_professor (se ainda não existir) e liga a
+-- conta logada ao perfil (user_id), tudo de uma vez.
+create or replace function public.responder_convite(p_convite_id uuid, p_aceitar boolean)
+returns void
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
+  v_convite public.convites;
   v_email text;
-  v_metadata jsonb;
-  v_count integer;
 begin
-  select email, raw_user_meta_data into v_email, v_metadata from auth.users where id = auth.uid();
-  if v_email is null then
-    return 0;
+  select * into v_convite from public.convites where id = p_convite_id;
+  if v_convite is null then
+    raise exception 'Convite não encontrado';
   end if;
 
-  -- data_nascimento/sexo só preenchem se o registro ainda não tiver isso
-  -- (coalesce) - o que a professora já cadastrou manualmente tem prioridade
-  -- sobre o que o aluno informou no cadastro dele.
-  update public.alunos
-  set
-    user_id = auth.uid(),
-    data_nascimento = coalesce(data_nascimento, nullif(v_metadata->>'data_nascimento', '')::date),
-    sexo = coalesce(sexo, nullif(v_metadata->>'sexo', ''))
-  where user_id is null and email is not null and lower(email) = lower(v_email);
+  select email into v_email from auth.users where id = auth.uid();
+  if v_email is null or lower(v_email) <> lower(v_convite.email) then
+    raise exception 'Esse convite não é seu';
+  end if;
 
-  get diagnostics v_count = row_count;
-  return v_count;
+  if v_convite.status <> 'pendente' then
+    raise exception 'Esse convite já foi respondido';
+  end if;
+
+  if p_aceitar then
+    begin
+      update public.alunos set user_id = auth.uid() where id = v_convite.aluno_id and user_id is null;
+    exception
+      when unique_violation then
+        raise exception 'Essa conta já está vinculada a outro cadastro de aluno';
+    end;
+
+    insert into public.aluno_professor (aluno_id, professor_id)
+    values (v_convite.aluno_id, v_convite.professor_id)
+    on conflict (aluno_id, professor_id) do nothing;
+
+    update public.convites set status = 'aceito', respondido_em = now() where id = p_convite_id;
+  else
+    update public.convites set status = 'recusado', respondido_em = now() where id = p_convite_id;
+  end if;
 end;
 $$;
 
-grant execute on function public.vincular_conta_aluno() to authenticated;
+grant execute on function public.responder_convite(uuid, boolean) to authenticated;
 
 -- ---------------------------------------------------------------------
 -- RLS: cada professora só vê o que é dela. alunos são a exceção parcial -

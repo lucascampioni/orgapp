@@ -25,10 +25,6 @@ export default async function Home() {
   const role = (user.user_metadata as { role?: string } | null)?.role;
 
   if (role === "aluno") {
-    // Idempotente: linka qualquer cadastro de aluno (de qualquer professora)
-    // que tenha o mesmo e-mail dessa conta e ainda não esteja vinculado.
-    await supabase.rpc("vincular_conta_aluno");
-
     const [
       { data: alunos },
       { data: aulas },

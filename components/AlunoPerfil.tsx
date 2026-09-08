@@ -29,7 +29,7 @@ import { OBJETIVOS } from "@/lib/objetivos";
 import { SEXOS } from "@/lib/sexo";
 
 type VincularContaResultado = {
-  status: "vinculado" | "nao_encontrado" | "sem_email" | "email_em_uso" | "conta_em_uso" | "erro";
+  status: "convite_enviado" | "erro";
   mensagem: string | null;
 };
 
@@ -130,27 +130,15 @@ export default function AlunoPerfil({
   }
 
   async function vincularContaAluno(email: string): Promise<VincularContaResultado> {
-    const { data, error } = await supabase.rpc("vincular_conta_aluno_por_professora", {
-      p_aluno_id: aluno.id,
+    const { data, error } = await supabase.rpc("convidar_aluno", {
       p_email: email,
+      p_aluno_id: aluno.id,
     });
-    if (error) {
-      return { status: "erro", mensagem: error.message };
+    if (error || !data) {
+      return { status: "erro", mensagem: error?.message ?? "Falha ao enviar convite" };
     }
-    if (data === "vinculado") {
-      const { data: atualizado } = await supabase
-        .from("alunos")
-        .select("*")
-        .eq("id", aluno.id)
-        .single();
-      if (atualizado) setAluno(atualizado as Aluno);
-    } else if (data !== "email_em_uso") {
-      setAluno((cur) => ({ ...cur, email }));
-    }
-    return {
-      status: data as "vinculado" | "nao_encontrado" | "sem_email" | "email_em_uso" | "conta_em_uso",
-      mensagem: null,
-    };
+    setAluno((cur) => ({ ...cur, email }));
+    return { status: "convite_enviado", mensagem: null };
   }
 
   async function addAula(titulo: string, data: string) {
@@ -542,15 +530,9 @@ function AlunoGeral({
     const resultado = await onVincularConta(emailAluno.trim());
     setVinculando(false);
     setMsgVinculo(
-      resultado.status === "vinculado"
-        ? "Conta vinculada! As informações já aparecem pro aluno."
-        : resultado.status === "nao_encontrado"
-          ? "E-mail salvo. Essa pessoa ainda não criou a conta - o vínculo acontece sozinho assim que ela se cadastrar."
-          : resultado.status === "email_em_uso"
-            ? "Esse e-mail já está vinculado a outro aluno."
-            : resultado.status === "conta_em_uso"
-              ? "E-mail salvo, mas essa conta já está vinculada a outro cadastro de aluno."
-              : resultado.mensagem ?? "Não foi possível vincular.",
+      resultado.status === "convite_enviado"
+        ? "Convite enviado! Assim que o aluno aceitar (na conta dele, com esse e-mail), o vínculo passa a valer."
+        : resultado.mensagem ?? "Não foi possível enviar o convite.",
     );
   }
 
@@ -661,7 +643,7 @@ function AlunoGeral({
             disabled={vinculando || !emailAluno.trim()}
             className={secondaryButtonClass}
           >
-            {vinculando ? "Vinculando..." : "Vincular"}
+            {vinculando ? "Enviando..." : "Enviar convite"}
           </button>
         </div>
         {msgVinculo && <div className="mt-2 text-xs text-muted">{msgVinculo}</div>}
