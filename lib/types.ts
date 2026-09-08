@@ -65,6 +65,7 @@ export interface Convite {
   professor_id: string;
   professor_nome: string | null;
   email: string;
+  idioma: string | null;
   status: ConviteStatus;
   criado_em: string;
   respondido_em: string | null;
@@ -75,6 +76,8 @@ export interface AlunoProfessor {
   aluno_id: string;
   professor_id: string;
   turma_id: string | null;
+  idioma: string | null;
+  professor_nome: string | null;
   criado_em: string;
 }
 

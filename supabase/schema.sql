@@ -286,12 +286,24 @@ create unique index if not exists alunos_user_id_unique_idx on public.alunos (us
 -- dar acesso de leitura livre à tabela auth.users).
 -- ---------------------------------------------------------------------
 
+-- Idioma que aquela professora ensina pra aquele aluno - mora no vínculo
+-- (aluno_professor), não no aluno nem na professora, porque o mesmo aluno
+-- pode aprender idiomas diferentes com professoras diferentes (ex: inglês
+-- com uma, espanhol com outra). professor_nome é uma cópia (não
+-- atualizada automaticamente se a professora trocar de nome depois) só pra
+-- o aluno conseguir ver de quem é cada vínculo sem precisar de acesso de
+-- leitura à tabela professores de outra conta.
+alter table public.aluno_professor add column if not exists idioma text;
+alter table public.aluno_professor add column if not exists professor_nome text;
+alter table public.convites add column if not exists idioma text;
+
 create or replace function public.criar_aluno(
   p_nome text,
   p_contato text default null,
   p_observacoes text default null,
   p_turma_id uuid default null,
-  p_email text default null
+  p_email text default null,
+  p_idioma text default null
 )
 returns public.alunos
 language plpgsql
@@ -300,6 +312,7 @@ set search_path = public
 as $$
 declare
   novo_aluno public.alunos;
+  v_professor_nome text;
 begin
   insert into public.alunos (nome, contato, observacoes, email)
   values (
@@ -310,8 +323,14 @@ begin
   )
   returning * into novo_aluno;
 
-  insert into public.aluno_professor (aluno_id, professor_id, turma_id)
-  values (novo_aluno.id, auth.uid(), p_turma_id);
+  select coalesce(p.nome, split_part(u.email, '@', 1))
+  into v_professor_nome
+  from auth.users u
+  left join public.professores p on p.id = u.id
+  where u.id = auth.uid();
+
+  insert into public.aluno_professor (aluno_id, professor_id, turma_id, idioma, professor_nome)
+  values (novo_aluno.id, auth.uid(), p_turma_id, nullif(trim(coalesce(p_idioma, '')), ''), v_professor_nome);
 
   return novo_aluno;
 exception
@@ -320,46 +339,18 @@ exception
 end;
 $$;
 
--- versão anterior (sem p_email) fica órfã se não for removida - o
--- "create or replace" acima não substitui porque a assinatura mudou.
+-- versões anteriores (assinaturas diferentes) ficam órfãs se não forem
+-- removidas - "create or replace" não substitui quando os parâmetros mudam.
 drop function if exists public.criar_aluno(text, text, text, uuid);
+drop function if exists public.criar_aluno(text, text, text, uuid, text);
 
-grant execute on function public.criar_aluno(text, text, text, uuid, text) to authenticated;
+grant execute on function public.criar_aluno(text, text, text, uuid, text, text) to authenticated;
 
-create or replace function public.vincular_aluno_por_email(
-  p_aluno_id uuid,
-  p_email text
-)
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_professor_id uuid;
-begin
-  if not exists (
-    select 1 from public.aluno_professor
-    where aluno_id = p_aluno_id and professor_id = auth.uid()
-  ) then
-    raise exception 'Você não tem acesso a este aluno';
-  end if;
-
-  select id into v_professor_id from auth.users where email = p_email limit 1;
-
-  if v_professor_id is null then
-    raise exception 'Nenhuma professora encontrada com esse e-mail';
-  end if;
-
-  insert into public.aluno_professor (aluno_id, professor_id)
-  values (p_aluno_id, v_professor_id)
-  on conflict (aluno_id, professor_id) do nothing;
-
-  return true;
-end;
-$$;
-
-grant execute on function public.vincular_aluno_por_email(uuid, text) to authenticated;
+-- "Compartilhar aluno com outra professora" foi removido: cada professora
+-- vincula o mesmo aluno de forma independente (convidando por e-mail), o
+-- aluno aceita cada convite separadamente - uma professora não pode mais
+-- dar acesso a outra sem o aluno confirmar.
+drop function if exists public.vincular_aluno_por_email(uuid, text);
 
 -- As duas funções abaixo (vincular_conta_aluno_por_professora e
 -- vincular_conta_aluno) vinculavam a conta do aluno automaticamente só por
@@ -409,7 +400,8 @@ create policy "convites_select_aluno" on public.convites for select to authentic
 create or replace function public.convidar_aluno(
   p_email text,
   p_nome text default null,
-  p_aluno_id uuid default null
+  p_aluno_id uuid default null,
+  p_idioma text default null
 )
 returns public.convites
 language plpgsql
@@ -419,6 +411,7 @@ as $$
 declare
   v_email text := nullif(trim(p_email), '');
   v_aluno_id uuid := p_aluno_id;
+  v_idioma text := nullif(trim(coalesce(p_idioma, '')), '');
   v_professor_nome text;
   v_convite public.convites;
 begin
@@ -460,10 +453,10 @@ begin
   left join public.professores p on p.id = u.id
   where u.id = auth.uid();
 
-  insert into public.convites (aluno_id, professor_id, professor_nome, email)
-  values (v_aluno_id, auth.uid(), v_professor_nome, v_email)
+  insert into public.convites (aluno_id, professor_id, professor_nome, email, idioma)
+  values (v_aluno_id, auth.uid(), v_professor_nome, v_email, v_idioma)
   on conflict (aluno_id, professor_id) do update
-    set email = excluded.email, professor_nome = excluded.professor_nome,
+    set email = excluded.email, professor_nome = excluded.professor_nome, idioma = excluded.idioma,
         status = 'pendente', respondido_em = null, criado_em = now()
   returning * into v_convite;
 
@@ -471,7 +464,9 @@ begin
 end;
 $$;
 
-grant execute on function public.convidar_aluno(text, text, uuid) to authenticated;
+drop function if exists public.convidar_aluno(text, text, uuid);
+
+grant execute on function public.convidar_aluno(text, text, uuid, text) to authenticated;
 
 -- Chamada pelo aluno pra aceitar ou recusar um convite endereçado a ele.
 -- Aceitar cria o vínculo aluno_professor (se ainda não existir) e liga a
@@ -508,8 +503,8 @@ begin
         raise exception 'Essa conta já está vinculada a outro cadastro de aluno';
     end;
 
-    insert into public.aluno_professor (aluno_id, professor_id)
-    values (v_convite.aluno_id, v_convite.professor_id)
+    insert into public.aluno_professor (aluno_id, professor_id, idioma, professor_nome)
+    values (v_convite.aluno_id, v_convite.professor_id, v_convite.idioma, v_convite.professor_nome)
     on conflict (aluno_id, professor_id) do nothing;
 
     update public.convites set status = 'aceito', respondido_em = now() where id = p_convite_id;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Aluno, AlunoProfessor, Aula, Convite, TarefaAula } from "@/lib/types";
 import { hoje, inputClass, primaryButtonClass } from "@/components/ui";
+import { IDIOMAS } from "@/lib/idiomas";
 
 export default function AlunosLista({
   initialAlunos,
@@ -27,8 +28,8 @@ export default function AlunosLista({
 
   const supabase = useMemo(() => createClient(), []);
 
-  async function addAluno(nome: string) {
-    const { data, error } = await supabase.rpc("criar_aluno", { p_nome: nome });
+  async function addAluno(nome: string, idioma: string) {
+    const { data, error } = await supabase.rpc("criar_aluno", { p_nome: nome, p_idioma: idioma || null });
     if (error || !data) {
       console.error("Falha ao adicionar aluno", error);
       return;
@@ -46,8 +47,11 @@ export default function AlunosLista({
     }
   }
 
-  async function convidarAluno(email: string): Promise<string | null> {
-    const { data, error } = await supabase.rpc("convidar_aluno", { p_email: email });
+  async function convidarAluno(email: string, idioma: string): Promise<string | null> {
+    const { data, error } = await supabase.rpc("convidar_aluno", {
+      p_email: email,
+      p_idioma: idioma || null,
+    });
     if (error || !data) {
       console.error("Falha ao convidar aluno", error);
       return error?.message ?? "Falha ao enviar convite";
@@ -57,6 +61,7 @@ export default function AlunosLista({
   }
 
   const [nome, setNome] = useState("");
+  const [idioma, setIdioma] = useState(IDIOMAS[0]);
   const [saving, setSaving] = useState(false);
   const [jaTemCadastro, setJaTemCadastro] = useState(false);
   const [emailConvite, setEmailConvite] = useState("");
@@ -66,7 +71,7 @@ export default function AlunosLista({
   async function handleAdd() {
     if (!nome.trim()) return;
     setSaving(true);
-    await addAluno(nome.trim());
+    await addAluno(nome.trim(), idioma);
     setSaving(false);
     setNome("");
   }
@@ -75,7 +80,7 @@ export default function AlunosLista({
     if (!emailConvite.trim()) return;
     setEnviandoConvite(true);
     setErroConvite(null);
-    const erro = await convidarAluno(emailConvite.trim());
+    const erro = await convidarAluno(emailConvite.trim(), idioma);
     setEnviandoConvite(false);
     if (erro) {
       setErroConvite(erro);
@@ -103,6 +108,22 @@ export default function AlunosLista({
           />
           Esse aluno já tem cadastro no Lumina
         </label>
+
+        <div className="mb-2">
+          <label className="mb-1 block text-xs font-medium text-muted">Idioma que você vai ensinar</label>
+          <select
+            value={idioma}
+            onChange={(e) => setIdioma(e.target.value)}
+            className={inputClass}
+            style={{ width: "auto" }}
+          >
+            {IDIOMAS.map((i) => (
+              <option key={i} value={i}>
+                {i}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {!jaTemCadastro ? (
           <div className="flex flex-wrap gap-2">
@@ -182,6 +203,15 @@ export default function AlunosLista({
                 <span className="font-display text-[15px] font-semibold text-ink">
                   {aluno.nome}
                 </span>
+                {aluno.user_id ? (
+                  <span className="shrink-0 rounded-full border border-success px-2 py-0.5 text-[10px] font-medium text-success">
+                    conta vinculada
+                  </span>
+                ) : (
+                  <span className="shrink-0 rounded-full border border-brand px-2 py-0.5 text-[10px] font-medium text-brand">
+                    sem conta
+                  </span>
+                )}
               </div>
               <div className="flex flex-col gap-1 text-[13px] text-muted">
                 <span>

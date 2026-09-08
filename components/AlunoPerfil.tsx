@@ -35,6 +35,7 @@ type AlunoSubTab = "geral" | "aulas" | "vocabulario" | "pagamentos";
 
 export default function AlunoPerfil({
   aluno: alunoInicial,
+  vinculo,
   initialAulas,
   initialTarefasAula,
   initialVocabulario,
@@ -91,14 +92,6 @@ export default function AlunoPerfil({
     }
     router.push("/alunos");
     router.refresh();
-  }
-
-  async function vincularAlunoPorEmail(email: string) {
-    const { error } = await supabase.rpc("vincular_aluno_por_email", {
-      p_aluno_id: aluno.id,
-      p_email: email,
-    });
-    return error ? error.message : null;
   }
 
   async function vincularContaAluno(email: string): Promise<VincularContaResultado> {
@@ -350,9 +343,16 @@ export default function AlunoPerfil({
               {OBJETIVOS.find((o) => o.key === aluno.objetivo)?.label ?? aluno.objetivo}
             </span>
           )}
+          {vinculo?.idioma && (
+            <span className="rounded-full border border-teal px-2 py-0.5 text-[11px] text-teal">
+              {vinculo.idioma}
+            </span>
+          )}
         </div>
         {aluno.contato && <div className="mt-0.5 text-[13px] text-muted">{aluno.contato}</div>}
       </div>
+
+      <AlunoContaBanner aluno={aluno} onVincularConta={vincularContaAluno} />
 
       <div className="mb-5 flex flex-wrap gap-2">
         <TabButton active={sub === "geral"} label="Visão geral" onClick={() => setSub("geral")} />
@@ -380,8 +380,6 @@ export default function AlunoPerfil({
           pendencias={pendencias.length}
           onUpdateAluno={updateAluno}
           onDesvincular={desvincularAluno}
-          onCompartilhar={vincularAlunoPorEmail}
-          onVincularConta={vincularContaAluno}
         />
       )}
 
@@ -437,41 +435,16 @@ export default function AlunoPerfil({
   );
 }
 
-function AlunoGeral({
+function AlunoContaBanner({
   aluno,
-  proximaAula,
-  pendencias,
-  onUpdateAluno,
-  onDesvincular,
-  onCompartilhar,
   onVincularConta,
 }: {
   aluno: Aluno;
-  proximaAula: Aula | null;
-  pendencias: number;
-  onUpdateAluno: (
-    fields: Partial<Pick<Aluno, "observacoes" | "nivel_cefr" | "objetivo" | "pontos_fortes" | "pontos_desenvolver">>,
-  ) => void;
-  onDesvincular: () => void;
-  onCompartilhar: (email: string) => Promise<string | null>;
   onVincularConta: (email: string) => Promise<VincularContaResultado>;
 }) {
-  const [email, setEmail] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
   const [emailAluno, setEmailAluno] = useState(aluno.email ?? "");
   const [vinculando, setVinculando] = useState(false);
   const [msgVinculo, setMsgVinculo] = useState<string | null>(null);
-
-  async function handleCompartilhar() {
-    if (!email.trim()) return;
-    setSending(true);
-    setMsg(null);
-    const erro = await onCompartilhar(email.trim());
-    setSending(false);
-    setMsg(erro ? erro : "Vínculo criado com sucesso.");
-    if (!erro) setEmail("");
-  }
 
   async function handleVincularConta() {
     if (!emailAluno.trim()) return;
@@ -486,6 +459,65 @@ function AlunoGeral({
     );
   }
 
+  if (aluno.user_id) {
+    return (
+      <div className="mb-5 flex items-center gap-2 rounded-lg border border-success bg-success/5 px-3 py-2 text-sm text-ink">
+        <span className="rounded-full border border-success px-1.5 py-0.5 text-[10px] font-medium text-success">
+          conta vinculada
+        </span>
+        <span className="text-xs text-muted">Este aluno já tem cadastro no Lumina.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-5 rounded-xl border-2 border-brand bg-brand/5 p-4">
+      <div className="mb-1 flex items-center gap-2">
+        <span className="shrink-0 rounded-full border border-brand px-2 py-0.5 text-[10px] font-medium text-brand">
+          sem conta
+        </span>
+        <div className="text-sm font-semibold text-ink">Este aluno ainda não tem cadastro no Lumina</div>
+      </div>
+      <p className="mb-3 text-xs text-muted">
+        Envie um convite pro e-mail do aluno. Funciona tanto se ele já tem conta no Lumina quanto
+        se ainda vai criar uma - o convite fica esperando o aceite dele nos dois casos.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="email"
+          value={emailAluno}
+          onChange={(e) => setEmailAluno(e.target.value)}
+          placeholder="e-mail da conta do aluno"
+          className={`min-w-[180px] flex-1 ${inputClass}`}
+        />
+        <button
+          onClick={handleVincularConta}
+          disabled={vinculando || !emailAluno.trim()}
+          className={primaryButtonClass}
+        >
+          {vinculando ? "Enviando..." : "Enviar convite"}
+        </button>
+      </div>
+      {msgVinculo && <div className="mt-2 text-xs text-muted">{msgVinculo}</div>}
+    </div>
+  );
+}
+
+function AlunoGeral({
+  aluno,
+  proximaAula,
+  pendencias,
+  onUpdateAluno,
+  onDesvincular,
+}: {
+  aluno: Aluno;
+  proximaAula: Aula | null;
+  pendencias: number;
+  onUpdateAluno: (
+    fields: Partial<Pick<Aluno, "observacoes" | "nivel_cefr" | "objetivo" | "pontos_fortes" | "pontos_desenvolver">>,
+  ) => void;
+  onDesvincular: () => void;
+}) {
   return (
     <div>
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -536,38 +568,6 @@ function AlunoGeral({
         </div>
       </div>
 
-      <div className="mb-3 rounded-lg border border-border bg-surface-2 p-3">
-        <div className="mb-2 text-xs font-medium text-muted">
-          E-mail do aluno
-          {aluno.user_id && (
-            <span className="ml-2 rounded-full border border-success px-1.5 py-0.5 text-[10px] font-normal text-success">
-              conta vinculada
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <input
-            type="email"
-            value={emailAluno}
-            onChange={(e) => setEmailAluno(e.target.value)}
-            placeholder="e-mail da conta do aluno"
-            className={`min-w-[180px] flex-1 ${inputClass}`}
-          />
-          <button
-            onClick={handleVincularConta}
-            disabled={vinculando || !emailAluno.trim()}
-            className={secondaryButtonClass}
-          >
-            {vinculando ? "Enviando..." : "Enviar convite"}
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-faint">
-          Funciona tanto se o aluno já tem conta no Lumina quanto se ainda vai criar uma - o
-          convite fica esperando o aceite dele nos dois casos.
-        </p>
-        {msgVinculo && <div className="mt-2 text-xs text-muted">{msgVinculo}</div>}
-      </div>
-
       <label className={labelClass}>Observações</label>
       <textarea
         defaultValue={aluno.observacoes ?? ""}
@@ -598,25 +598,6 @@ function AlunoGeral({
             className={`resize-none ${inputClass}`}
           />
         </div>
-      </div>
-
-      <div className="mb-5 rounded-lg border border-border bg-surface-2 p-3">
-        <div className="mb-2 text-xs font-medium text-muted">
-          Compartilhar este aluno com outra professora
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="e-mail da outra professora"
-            className={`min-w-[180px] flex-1 ${inputClass}`}
-          />
-          <button onClick={handleCompartilhar} disabled={sending} className={secondaryButtonClass}>
-            {sending ? "Enviando..." : "Compartilhar"}
-          </button>
-        </div>
-        {msg && <div className="mt-2 text-xs text-muted">{msg}</div>}
       </div>
 
       <div className="border-t border-border pt-4">
