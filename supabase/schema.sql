@@ -641,12 +641,29 @@ create policy "erros_aula_all_own" on public.erros_aula for all to authenticated
 -- ---------------------------------------------------------------------
 
 -- Precisa enxergar os próprios vínculos (um por professora) pra montar o
--- seletor de "perfil" (idioma + professora) no portal do aluno.
+-- seletor de "perfil" (idioma + professora) no portal do aluno. Não dá pra
+-- fazer isso com um EXISTS direto em public.alunos aqui: a policy de select
+-- de alunos (alunos_select_vinculado, acima) já consulta aluno_professor,
+-- então um EXISTS em alunos dentro da policy de aluno_professor criaria um
+-- ciclo A→B→A ("infinite recursion detected in policy") - toda consulta em
+-- alunos/aluno_professor/aulas/tarefas_aula passava a falhar. Por isso o
+-- lookup do aluno_id do usuário logado mora numa função SECURITY DEFINER
+-- (ignora RLS só nessa consulta pontual e bem restrita), quebrando o ciclo.
+create or replace function public.aluno_id_do_usuario_atual()
+returns uuid
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select id from public.alunos where user_id = auth.uid();
+$$;
+
+grant execute on function public.aluno_id_do_usuario_atual() to authenticated;
+
 drop policy if exists "aluno_professor_select_aluno" on public.aluno_professor;
 create policy "aluno_professor_select_aluno" on public.aluno_professor for select to authenticated
-  using (exists (
-    select 1 from public.alunos a where a.id = aluno_professor.aluno_id and a.user_id = auth.uid()
-  ));
+  using (aluno_id = public.aluno_id_do_usuario_atual());
 
 drop policy if exists "aulas_select_aluno" on public.aulas;
 create policy "aulas_select_aluno" on public.aulas for select to authenticated
