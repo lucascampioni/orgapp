@@ -25,6 +25,7 @@ export default function AulaModal({
   onRefresh,
   onReprocessar,
   onToggleTarefa,
+  onAddTarefa,
   onRemoveTarefa,
   onRemoveAula,
 }: {
@@ -40,6 +41,7 @@ export default function AulaModal({
   onRefresh: () => Promise<void>;
   onReprocessar: () => Promise<string | null>;
   onToggleTarefa: (tarefa: TarefaAula) => void;
+  onAddTarefa: (descricao: string) => void;
   onRemoveTarefa: (id: string) => void;
   onRemoveAula: () => void;
 }) {
@@ -57,6 +59,7 @@ export default function AulaModal({
   const [gravacaoErro, setGravacaoErro] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [reprocessando, setReprocessando] = useState(false);
+  const [novaTarefa, setNovaTarefa] = useState("");
 
   async function handleSave() {
     setSaving(true);
@@ -344,25 +347,32 @@ export default function AulaModal({
         )}
 
         {tarefas.length > 0 && (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             {tarefas.map((t) => (
-              <div key={t.id} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={t.concluida}
-                  onChange={() => onToggleTarefa(t)}
-                  className="h-4 w-4"
-                />
-                <span className={`flex-1 text-sm ${t.concluida ? "text-muted line-through" : "text-ink"}`}>
-                  {t.descricao}
-                </span>
-                <button onClick={() => onRemoveTarefa(t.id)} title="Remover" className="text-muted hover:text-danger">
-                  ✕
-                </button>
-              </div>
+              <TarefaRow key={t.id} tarefa={t} onToggle={() => onToggleTarefa(t)} onRemove={() => onRemoveTarefa(t.id)} />
             ))}
           </div>
         )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!novaTarefa.trim()) return;
+            onAddTarefa(novaTarefa.trim());
+            setNovaTarefa("");
+          }}
+          className="mt-2 flex gap-1.5"
+        >
+          <input
+            value={novaTarefa}
+            onChange={(e) => setNovaTarefa(e.target.value)}
+            placeholder="Adicionar tarefa manualmente..."
+            className={`flex-1 ${inputClass}`}
+          />
+          <button type="submit" disabled={!novaTarefa.trim()} className={secondaryButtonClass}>
+            + Adicionar
+          </button>
+        </form>
       </div>
 
       <div className="mt-5 border-t border-border pt-4">
@@ -371,5 +381,73 @@ export default function AulaModal({
         </button>
       </div>
     </ModalShell>
+  );
+}
+
+function TarefaRow({
+  tarefa,
+  onToggle,
+  onRemove,
+}: {
+  tarefa: TarefaAula;
+  onToggle: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-surface-2 p-2.5">
+      <div className="flex items-center gap-2">
+        {tarefa.tipo === "checklist" && (
+          <input type="checkbox" checked={tarefa.concluida} onChange={onToggle} className="h-4 w-4" />
+        )}
+        <span
+          className={`flex-1 text-sm ${tarefa.concluida ? "text-muted line-through" : "text-ink"}`}
+        >
+          {tarefa.descricao}
+        </span>
+        {tarefa.tipo !== "checklist" && (
+          <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted">
+            {tarefa.resposta_aluno ? "respondida" : "aguardando resposta"}
+          </span>
+        )}
+        <button onClick={onRemove} title="Remover" className="text-muted hover:text-danger">
+          ✕
+        </button>
+      </div>
+
+      {tarefa.tipo === "dissertativa" && (
+        <div className="mt-2 rounded-md bg-surface px-2 py-1.5 text-xs text-ink">
+          {tarefa.resposta_aluno ? tarefa.resposta_aluno : (
+            <span className="text-muted">O aluno ainda não respondeu.</span>
+          )}
+        </div>
+      )}
+
+      {tarefa.tipo === "multipla_escolha" && tarefa.opcoes && tarefa.opcoes.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1">
+          {tarefa.opcoes.map((opcao) => {
+            const escolhida = tarefa.resposta_aluno === opcao;
+            const correta = tarefa.resposta_correta === opcao;
+            return (
+              <div
+                key={opcao}
+                className={`rounded-md px-2 py-1 text-xs ${
+                  escolhida && correta
+                    ? "bg-success/15 text-success"
+                    : escolhida
+                      ? "bg-danger/15 text-danger"
+                      : correta
+                        ? "text-success"
+                        : "text-muted"
+                }`}
+              >
+                {escolhida ? "● " : "○ "}
+                {opcao}
+                {correta ? " (correta)" : ""}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

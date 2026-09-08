@@ -100,6 +100,14 @@ create table if not exists public.tarefas_aula (
   criado_em timestamptz not null default now()
 );
 
+-- Tarefa deixa de ser só um checklist: pode pedir uma resposta de verdade
+-- do aluno (dissertativa ou múltipla escolha), não só marcar "feito".
+alter table public.tarefas_aula add column if not exists tipo text not null default 'checklist'
+  check (tipo in ('checklist', 'dissertativa', 'multipla_escolha'));
+alter table public.tarefas_aula add column if not exists opcoes text[];
+alter table public.tarefas_aula add column if not exists resposta_correta text;
+alter table public.tarefas_aula add column if not exists resposta_aluno text;
+
 -- Erros identificados pela IA na transcrição da aula.
 create table if not exists public.erros_aula (
   id uuid primary key default gen_random_uuid(),

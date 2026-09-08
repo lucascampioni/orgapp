@@ -83,12 +83,18 @@ export interface ErroAula {
   criado_em: string;
 }
 
+export type TipoTarefa = "checklist" | "dissertativa" | "multipla_escolha";
+
 export interface TarefaAula {
   id: string;
   aula_id: string;
   descricao: string;
   concluida: boolean;
   criado_em: string;
+  tipo: TipoTarefa;
+  opcoes: string[] | null;
+  resposta_correta: string | null;
+  resposta_aluno: string | null;
 }
 
 export interface Vocabulario {

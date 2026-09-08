@@ -105,6 +105,11 @@ export default function TarefasLista({
                   )}
                   {aula?.titulo ? ` · ${aula.titulo}` : ""}
                 </div>
+                {t.tipo !== "checklist" && t.resposta_aluno && (
+                  <div className="mt-1 rounded-md bg-surface-2 px-2 py-1 text-xs text-ink">
+                    {t.resposta_aluno}
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => removeTarefa(t.id)}

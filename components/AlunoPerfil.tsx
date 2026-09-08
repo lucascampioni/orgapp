@@ -233,6 +233,19 @@ export default function AlunoPerfil({
     }
   }
 
+  async function addTarefaAula(aulaId: string, descricao: string) {
+    const { data, error } = await supabase
+      .from("tarefas_aula")
+      .insert({ aula_id: aulaId, descricao, tipo: "checklist" })
+      .select()
+      .single();
+    if (error || !data) {
+      console.error("Falha ao adicionar tarefa da aula", error);
+      return;
+    }
+    setTarefasAula((prev) => [...prev, data as TarefaAula]);
+  }
+
   async function refreshAula(aulaId: string) {
     const [{ data: a }, { data: tarefas }, { data: vocab }, { data: errosData }] = await Promise.all([
       supabase.from("aulas").select("*").eq("id", aulaId).single(),
@@ -453,6 +466,7 @@ export default function AlunoPerfil({
           onRefresh={() => refreshAula(openAula.id)}
           onReprocessar={() => reprocessarAula(openAula.id)}
           onToggleTarefa={toggleTarefaAula}
+          onAddTarefa={(descricao) => addTarefaAula(openAula.id, descricao)}
           onRemoveTarefa={removeTarefaAula}
           onRemoveAula={() => {
             removeAula(openAula.id);

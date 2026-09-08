@@ -44,6 +44,21 @@ export default function AlunoPortal({
     }
   }
 
+  async function responderTarefa(t: TarefaAula, resposta: string) {
+    const prev = tarefas;
+    setTarefas((cur) =>
+      cur.map((x) => (x.id === t.id ? { ...x, resposta_aluno: resposta, concluida: true } : x)),
+    );
+    const { error } = await supabase
+      .from("tarefas_aula")
+      .update({ resposta_aluno: resposta, concluida: true })
+      .eq("id", t.id);
+    if (error) {
+      console.error("Falha ao responder tarefa", error);
+      setTarefas(prev);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-[900px] px-6 py-7">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -73,6 +88,7 @@ export default function AlunoPortal({
           vocabulario={vocabulario}
           pagamentos={pagamentos}
           onToggleTarefa={toggleTarefa}
+          onResponderTarefa={responderTarefa}
         />
       )}
     </div>
@@ -88,6 +104,7 @@ function AlunoConteudo({
   vocabulario,
   pagamentos,
   onToggleTarefa,
+  onResponderTarefa,
 }: {
   alunos: Aluno[];
   alunoAtivoId: string;
@@ -97,6 +114,7 @@ function AlunoConteudo({
   vocabulario: Vocabulario[];
   pagamentos: Pagamento[];
   onToggleTarefa: (t: TarefaAula) => void;
+  onResponderTarefa: (t: TarefaAula, resposta: string) => void;
 }) {
   const hojeStr = hoje();
   const minhasAulas = aulas.filter((a) => a.aluno_id === alunoAtivoId);
@@ -158,18 +176,12 @@ function AlunoConteudo({
           {minhasTarefas
             .filter((t) => !t.concluida)
             .map((t) => (
-              <label
+              <TarefaPendenteItem
                 key={t.id}
-                className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 p-2.5"
-              >
-                <input
-                  type="checkbox"
-                  checked={t.concluida}
-                  onChange={() => onToggleTarefa(t)}
-                  className="h-4 w-4"
-                />
-                <span className="text-sm text-ink">{t.descricao}</span>
-              </label>
+                tarefa={t}
+                onToggle={() => onToggleTarefa(t)}
+                onResponder={(resposta) => onResponderTarefa(t, resposta)}
+              />
             ))}
         </Secao>
       </div>
@@ -235,6 +247,77 @@ function AlunoConteudo({
           ))}
         </div>
       </Secao>
+    </div>
+  );
+}
+
+function TarefaPendenteItem({
+  tarefa,
+  onToggle,
+  onResponder,
+}: {
+  tarefa: TarefaAula;
+  onToggle: () => void;
+  onResponder: (resposta: string) => void;
+}) {
+  const [resposta, setResposta] = useState("");
+  const [selecionada, setSelecionada] = useState("");
+
+  if (tarefa.tipo === "checklist") {
+    return (
+      <label className="flex items-center gap-2 rounded-lg border border-border bg-surface-2 p-2.5">
+        <input type="checkbox" checked={tarefa.concluida} onChange={onToggle} className="h-4 w-4" />
+        <span className="text-sm text-ink">{tarefa.descricao}</span>
+      </label>
+    );
+  }
+
+  if (tarefa.tipo === "multipla_escolha") {
+    return (
+      <div className="rounded-lg border border-border bg-surface-2 p-2.5">
+        <div className="mb-2 text-sm text-ink">{tarefa.descricao}</div>
+        <div className="mb-2 flex flex-col gap-1.5">
+          {(tarefa.opcoes ?? []).map((opcao) => (
+            <label key={opcao} className="flex items-center gap-2 text-sm text-ink">
+              <input
+                type="radio"
+                name={`tarefa-${tarefa.id}`}
+                checked={selecionada === opcao}
+                onChange={() => setSelecionada(opcao)}
+                className="h-4 w-4"
+              />
+              {opcao}
+            </label>
+          ))}
+        </div>
+        <button
+          onClick={() => selecionada && onResponder(selecionada)}
+          disabled={!selecionada}
+          className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink transition hover:bg-brand-strong disabled:opacity-50"
+        >
+          Responder
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface-2 p-2.5">
+      <div className="mb-2 text-sm text-ink">{tarefa.descricao}</div>
+      <textarea
+        value={resposta}
+        onChange={(e) => setResposta(e.target.value)}
+        rows={3}
+        placeholder="Escreva sua resposta..."
+        className="mb-2 w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
+      />
+      <button
+        onClick={() => resposta.trim() && onResponder(resposta.trim())}
+        disabled={!resposta.trim()}
+        className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink transition hover:bg-brand-strong disabled:opacity-50"
+      >
+        Enviar resposta
+      </button>
     </div>
   );
 }

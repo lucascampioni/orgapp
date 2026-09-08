@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Webhook } from "standardwebhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { extractBotId, extractTranscriptId, getTranscriptText } from "@/lib/recall";
-import { summarize, extractVocabulario } from "@/lib/resumo-ia";
+import { summarize, extractVocabulario, extractTarefas, type TarefaGerada } from "@/lib/resumo-ia";
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,7 +74,7 @@ async function handlePost(request: NextRequest) {
   }
 
   let resumo: string;
-  let tarefas: string[];
+  let tarefas: TarefaGerada[];
   let vocabulario: { termo: string; significado?: string; exemplo?: string }[];
   let topicos: string[];
   let erros: {
@@ -87,12 +87,13 @@ async function handlePost(request: NextRequest) {
   let pontosMelhorar: string[];
   let sugestao: string;
   try {
-    const [result, vocab] = await Promise.all([
+    const [result, vocab, tarefasGeradas] = await Promise.all([
       summarize(transcript),
       extractVocabulario(transcript),
+      extractTarefas(transcript),
     ]);
     resumo = result.resumo;
-    tarefas = result.tarefas;
+    tarefas = tarefasGeradas;
     vocabulario = vocab;
     topicos = result.topicos ?? [];
     erros = result.erros ?? [];
@@ -122,7 +123,13 @@ async function handlePost(request: NextRequest) {
 
   if (tarefas.length > 0) {
     const { error: insertError } = await supabase.from("tarefas_aula").insert(
-      tarefas.map((descricao) => ({ aula_id: aula.id, descricao })),
+      tarefas.map((t) => ({
+        aula_id: aula.id,
+        descricao: t.descricao,
+        tipo: t.tipo,
+        opcoes: t.tipo === "multipla_escolha" ? t.opcoes ?? null : null,
+        resposta_correta: t.tipo === "multipla_escolha" ? t.resposta_correta ?? null : null,
+      })),
     );
     if (insertError) {
       console.error("Falha ao salvar tarefas_aula", insertError);

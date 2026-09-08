@@ -2,7 +2,6 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export type ResumoIA = {
   resumo: string;
-  tarefas: string[];
   topicos: string[];
   erros: {
     frase_original: string;
@@ -17,10 +16,16 @@ export type ResumoIA = {
 
 export type VocabularioItem = { termo: string; significado?: string; exemplo?: string };
 
+export type TarefaGerada = {
+  descricao: string;
+  tipo: "checklist" | "dissertativa" | "multipla_escolha";
+  opcoes?: string[];
+  resposta_correta?: string;
+};
+
 const SUMMARY_TOOL = {
   name: "salvar_resumo_aula",
-  description:
-    "Salva o resumo da aula e a lista de tarefas de acompanhamento identificadas na transcrição.",
+  description: "Salva o resumo da aula e a análise do desempenho do aluno.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -28,12 +33,6 @@ const SUMMARY_TOOL = {
         type: "string",
         description:
           "Resumo objetivo do que foi trabalhado na aula, em português, 3-6 frases.",
-      },
-      tarefas: {
-        type: "array",
-        items: { type: "string" },
-        description:
-          "Lista curta de tarefas de acompanhamento (revisar algo, praticar algo, preparar material) que ficaram combinadas ou implícitas na aula. Pode ser vazia.",
       },
       topicos: {
         type: "array",
@@ -81,7 +80,7 @@ const SUMMARY_TOOL = {
           "Uma sugestão curta (1-2 frases) do que focar nas próximas aulas com esse aluno.",
       },
     },
-    required: ["resumo", "tarefas", "topicos", "erros", "pontos_positivos", "pontos_melhorar", "sugestao"],
+    required: ["resumo", "topicos", "erros", "pontos_positivos", "pontos_melhorar", "sugestao"],
   },
 };
 
@@ -96,7 +95,7 @@ export async function summarize(transcript: string): Promise<ResumoIA> {
     messages: [
       {
         role: "user",
-        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, as tarefas de acompanhamento, os tópicos abordados, os erros que o ALUNO cometeu ao falar inglês, os pontos positivos, os pontos a melhorar e uma sugestão pra próxima aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
+        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, os tópicos abordados, os erros que o ALUNO cometeu ao falar inglês, os pontos positivos, os pontos a melhorar e uma sugestão pra próxima aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
       },
     ],
   });
@@ -143,7 +142,7 @@ const VOCABULARIO_TOOL = {
 /**
  * Chamada separada só pra extrair vocabulário, em vez de um campo a mais
  * dentro de summarize() - na prática o modelo era inconsistente tentando
- * preencher 8 campos de uma vez (o resumo em texto livre mencionava
+ * preencher vários campos de uma vez (o resumo em texto livre mencionava
  * palavras ensinadas, mas o array estruturado vinha vazio mesmo depois de
  * reforçar a instrução). Isolar numa chamada com um único objetivo evita
  * essa disputa de atenção entre os campos.
@@ -170,4 +169,76 @@ export async function extractVocabulario(transcript: string): Promise<Vocabulari
   }
 
   return (toolUse.input as { vocabulario: VocabularioItem[] }).vocabulario ?? [];
+}
+
+const TAREFAS_TOOL = {
+  name: "salvar_tarefas",
+  description: "Salva as tarefas de prática pro aluno fazer depois da aula.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      tarefas: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            descricao: {
+              type: "string",
+              description:
+                "O enunciado da tarefa/pergunta, em português, específico o suficiente pro aluno conseguir responder sozinho sem precisar perguntar nada pra professora (ex: 'Escreva 3 frases usando I am / He is / She is para descrever como diferentes pessoas da sua família estão se sentindo hoje', não só 'praticar o verbo to be').",
+            },
+            tipo: {
+              type: "string",
+              enum: ["checklist", "dissertativa", "multipla_escolha"],
+              description:
+                "checklist = ação sem uma resposta certa pra digitar (ex: 'ouvir uma música em inglês e anotar 3 palavras novas', 'praticar a pronúncia de X em voz alta 5 vezes'); dissertativa = pergunta aberta que o aluno responde escrevendo um texto curto; multipla_escolha = pergunta objetiva com alternativas, tem uma resposta certa.",
+            },
+            opcoes: {
+              type: "array",
+              items: { type: "string" },
+              description: "Só quando tipo=multipla_escolha: 3 a 4 alternativas curtas, incluindo a correta.",
+            },
+            resposta_correta: {
+              type: "string",
+              description:
+                "Só quando tipo=multipla_escolha: o texto de uma das opcoes (exatamente igual) que é a resposta certa.",
+            },
+          },
+          required: ["descricao", "tipo"],
+        },
+        description:
+          "2-4 tarefas de prática pra reforçar o que foi trabalhado nessa aula específica. Prefira dissertativa ou multipla_escolha (uma resposta de verdade pro aluno escrever/escolher) sempre que der pra transformar o conteúdo da aula numa pergunta objetiva - só use checklist quando realmente não tem uma resposta certa pra pedir por escrito. Pode ser vazia se a aula não deu material suficiente pra tarefas específicas.",
+      },
+    },
+    required: ["tarefas"],
+  },
+};
+
+/**
+ * Também numa chamada separada, pelo mesmo motivo do vocabulário - e
+ * porque agora tarefa é uma estrutura mais rica (tipo, alternativas), não
+ * só uma frase solta, então merece o foco total do modelo.
+ */
+export async function extractTarefas(transcript: string): Promise<TarefaGerada[]> {
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-5",
+    max_tokens: 1536,
+    tools: [TAREFAS_TOOL],
+    tool_choice: { type: "tool", name: TAREFAS_TOOL.name },
+    messages: [
+      {
+        role: "user",
+        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Baseado especificamente no que foi trabalhado nessa aula, gere tarefas de prática pro aluno fazer em casa, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
+      },
+    ],
+  });
+
+  const toolUse = message.content.find((block) => block.type === "tool_use");
+  if (!toolUse || toolUse.type !== "tool_use") {
+    throw new Error("Claude não retornou as tarefas estruturadas esperadas");
+  }
+
+  return (toolUse.input as { tarefas: TarefaGerada[] }).tarefas ?? [];
 }
