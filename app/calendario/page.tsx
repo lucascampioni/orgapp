@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProfessorShell from "@/components/ProfessorShell";
 import CalendarioView from "@/components/CalendarioView";
-import type { Aluno, Aula, ErroAula, TarefaAula, Turma, Vocabulario } from "@/lib/types";
+import type { Aluno, Aula, ErroAula, TarefaAula, Vocabulario } from "@/lib/types";
 
 export default async function CalendarioPage() {
   const supabase = await createClient();
@@ -21,7 +21,6 @@ export default async function CalendarioPage() {
 
   const [
     { data: alunos },
-    { data: turmas },
     { data: aulas },
     { data: tarefasAula },
     { data: vocabulario },
@@ -30,7 +29,6 @@ export default async function CalendarioPage() {
     { data: googleVinculos },
   ] = await Promise.all([
     supabase.from("alunos").select("*").order("nome", { ascending: true }),
-    supabase.from("turmas").select("*").order("nome", { ascending: true }),
     supabase.from("aulas").select("*"),
     supabase.from("tarefas_aula").select("*"),
     supabase.from("vocabulario").select("*"),
@@ -44,7 +42,6 @@ export default async function CalendarioPage() {
       <CalendarioView
         initialAulas={(aulas as Aula[]) ?? []}
         alunos={(alunos as Aluno[]) ?? []}
-        turmas={(turmas as Turma[]) ?? []}
         initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
         initialVocabulario={(vocabulario as Vocabulario[]) ?? []}
         initialErros={(erros as ErroAula[]) ?? []}

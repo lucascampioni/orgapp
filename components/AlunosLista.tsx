@@ -3,60 +3,34 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { NIVEIS } from "@/lib/niveis";
-import type { Aluno, AlunoProfessor, Aula, Convite, Nivel, TarefaAula, Turma } from "@/lib/types";
-import { TabButton, hoje, inputClass, primaryButtonClass } from "@/components/ui";
+import type { Aluno, AlunoProfessor, Aula, Convite, TarefaAula } from "@/lib/types";
+import { hoje, inputClass, primaryButtonClass, TabButton } from "@/components/ui";
 
 export default function AlunosLista({
-  initialTurmas,
   initialAlunos,
   initialAlunoProfessor,
   initialAulas,
   initialTarefasAula,
   initialConvites,
 }: {
-  initialTurmas: Turma[];
   initialAlunos: Aluno[];
   initialAlunoProfessor: AlunoProfessor[];
   initialAulas: Aula[];
   initialTarefasAula: TarefaAula[];
   initialConvites: Convite[];
 }) {
-  const [turmas, setTurmas] = useState<Turma[]>(initialTurmas);
   const [alunos, setAlunos] = useState<Aluno[]>(initialAlunos);
-  const [alunoProfessor, setAlunoProfessor] = useState<AlunoProfessor[]>(
-    initialAlunoProfessor,
-  );
+  const [, setAlunoProfessor] = useState<AlunoProfessor[]>(initialAlunoProfessor);
   const [aulas] = useState<Aula[]>(initialAulas);
   const [tarefasAula] = useState<TarefaAula[]>(initialTarefasAula);
   const [convites, setConvites] = useState<Convite[]>(initialConvites);
 
   const supabase = useMemo(() => createClient(), []);
 
-  const vinculoPorAluno = useMemo(() => {
-    const map = new Map<string, AlunoProfessor>();
-    for (const v of alunoProfessor) map.set(v.aluno_id, v);
-    return map;
-  }, [alunoProfessor]);
-
-  async function addTurma(nome: string, nivel: Nivel, horario: string) {
-    const { data, error } = await supabase
-      .from("turmas")
-      .insert({ nome, nivel, horario: horario.trim() || null })
-      .select()
-      .single();
-    if (error || !data) {
-      console.error("Falha ao adicionar turma", error);
-      return;
-    }
-    setTurmas((prev) => [...prev, data as Turma]);
-  }
-
-  async function addAluno(nome: string, contato: string, turmaId: string | null) {
+  async function addAluno(nome: string, contato: string) {
     const { data, error } = await supabase.rpc("criar_aluno", {
       p_nome: nome,
       p_contato: contato.trim() || null,
-      p_turma_id: turmaId,
     });
     if (error || !data) {
       console.error("Falha ao adicionar aluno", error);
@@ -87,10 +61,7 @@ export default function AlunosLista({
 
   const [nome, setNome] = useState("");
   const [contato, setContato] = useState("");
-  const [turmaId, setTurmaId] = useState("");
   const [saving, setSaving] = useState(false);
-  const [filtroTurma, setFiltroTurma] = useState<string>("all");
-  const [showNovaTurma, setShowNovaTurma] = useState(false);
   const [jaTemCadastro, setJaTemCadastro] = useState(false);
   const [emailConvite, setEmailConvite] = useState("");
   const [erroConvite, setErroConvite] = useState<string | null>(null);
@@ -99,7 +70,7 @@ export default function AlunosLista({
   async function handleAdd() {
     if (!nome.trim()) return;
     setSaving(true);
-    await addAluno(nome.trim(), contato, turmaId || null);
+    await addAluno(nome.trim(), contato);
     setSaving(false);
     setNome("");
     setContato("");
@@ -118,47 +89,11 @@ export default function AlunosLista({
     setEmailConvite("");
   }
 
-  const visiveis = alunos.filter((a) => {
-    if (filtroTurma === "all") return true;
-    return vinculoPorAluno.get(a.id)?.turma_id === filtroTurma;
-  });
-
   const hojeStr = hoje();
 
   return (
     <div>
       <h1 className="mb-4 font-display text-2xl font-semibold text-ink">Alunos</h1>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <TabButton
-          active={filtroTurma === "all"}
-          label="Todos os alunos"
-          onClick={() => setFiltroTurma("all")}
-        />
-        {turmas.map((t) => (
-          <TabButton
-            key={t.id}
-            active={filtroTurma === t.id}
-            label={t.nome}
-            onClick={() => setFiltroTurma(t.id)}
-          />
-        ))}
-        <button
-          onClick={() => setShowNovaTurma((v) => !v)}
-          className="text-[13px] text-muted transition hover:text-brand"
-        >
-          + turma
-        </button>
-      </div>
-
-      {showNovaTurma && (
-        <NovaTurmaForm
-          onAdd={async (n, nv, h) => {
-            await addTurma(n, nv, h);
-            setShowNovaTurma(false);
-          }}
-        />
-      )}
 
       <div className="mb-6 rounded-xl border border-border bg-surface p-3">
         <div className="mb-3 flex gap-2">
@@ -196,19 +131,6 @@ export default function AlunosLista({
               placeholder="Contato (opcional)"
               className={`min-w-[160px] flex-1 ${inputClass}`}
             />
-            <select
-              value={turmaId}
-              onChange={(e) => setTurmaId(e.target.value)}
-              className={inputClass}
-              style={{ width: "auto" }}
-            >
-              <option value="">Sem turma</option>
-              {turmas.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome}
-                </option>
-              ))}
-            </select>
             <button onClick={handleAdd} disabled={saving} className={primaryButtonClass}>
               Adicionar aluno
             </button>
@@ -258,11 +180,10 @@ export default function AlunosLista({
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {visiveis.length === 0 && (
+        {alunos.length === 0 && (
           <div className="text-sm text-muted">Nenhum aluno ainda. Adicione o primeiro acima.</div>
         )}
-        {visiveis.map((aluno) => {
-          const turma = turmas.find((t) => t.id === vinculoPorAluno.get(aluno.id)?.turma_id);
+        {alunos.map((aluno) => {
           const minhasAulas = aulas.filter((a) => a.aluno_id === aluno.id);
           const proxima = minhasAulas
             .filter((a) => a.status === "planejada" && a.data && a.data >= hojeStr)
@@ -281,11 +202,6 @@ export default function AlunosLista({
                 <span className="font-display text-[15px] font-semibold text-ink">
                   {aluno.nome}
                 </span>
-                {turma && (
-                  <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">
-                    {turma.nome}
-                  </span>
-                )}
               </div>
               <div className="flex flex-col gap-1 text-[13px] text-muted">
                 <span>
@@ -299,59 +215,6 @@ export default function AlunosLista({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function NovaTurmaForm({
-  onAdd,
-}: {
-  onAdd: (nome: string, nivel: Nivel, horario: string) => Promise<void>;
-}) {
-  const [nome, setNome] = useState("");
-  const [nivel, setNivel] = useState<Nivel>(NIVEIS[0].key);
-  const [horario, setHorario] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  async function handleAdd() {
-    if (!nome.trim()) return;
-    setSaving(true);
-    await onAdd(nome.trim(), nivel, horario);
-    setSaving(false);
-  }
-
-  return (
-    <div className="mb-4 flex flex-wrap gap-2 rounded-xl border border-border bg-surface p-3">
-      <input
-        type="text"
-        value={nome}
-        onChange={(e) => setNome(e.target.value)}
-        placeholder="Nome da turma..."
-        className={`min-w-[160px] flex-1 ${inputClass}`}
-      />
-      <select
-        value={nivel}
-        onChange={(e) => setNivel(e.target.value as Nivel)}
-        className={inputClass}
-        style={{ width: "auto" }}
-      >
-        {NIVEIS.map((n) => (
-          <option key={n.key} value={n.key}>
-            {n.label}
-          </option>
-        ))}
-      </select>
-      <input
-        type="text"
-        value={horario}
-        onChange={(e) => setHorario(e.target.value)}
-        placeholder="Horário (ex: Ter/Qui 19h)"
-        className={`min-w-[160px] ${inputClass}`}
-        style={{ width: "auto" }}
-      />
-      <button onClick={handleAdd} disabled={saving} className={primaryButtonClass}>
-        Criar turma
-      </button>
     </div>
   );
 }

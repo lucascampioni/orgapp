@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Aluno, Aula, ErroAula, TarefaAula, Turma, Vocabulario } from "@/lib/types";
+import type { Aluno, Aula, ErroAula, TarefaAula, Vocabulario } from "@/lib/types";
 import AulaModal from "@/components/AulaModal";
 import GoogleCalendarPainel from "@/components/GoogleCalendarPainel";
 import { inputClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui";
@@ -47,7 +47,6 @@ function paraISO(d: Date) {
 export default function CalendarioView({
   initialAulas,
   alunos,
-  turmas,
   initialTarefasAula,
   initialVocabulario,
   initialErros,
@@ -57,7 +56,6 @@ export default function CalendarioView({
 }: {
   initialAulas: Aula[];
   alunos: Aluno[];
-  turmas: Turma[];
   initialTarefasAula: TarefaAula[];
   initialVocabulario: Vocabulario[];
   initialErros: ErroAula[];
@@ -348,7 +346,6 @@ export default function CalendarioView({
         <AulaModal
           aula={openAula}
           alunos={alunos}
-          turmas={turmas}
           tarefas={tarefasAula.filter((t) => t.aula_id === openAula.id)}
           vocabulario={vocabulario.filter((v) => v.aula_id === openAula.id)}
           erros={erros.filter((e) => e.aula_id === openAula.id)}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Aluno, Aula, AulaStatus, ErroAula, TarefaAula, Turma, Vocabulario } from "@/lib/types";
+import type { Aluno, Aula, AulaStatus, ErroAula, TarefaAula, Vocabulario } from "@/lib/types";
 import {
   ModalShell,
   dangerLinkClass,
@@ -15,7 +15,6 @@ import { CATEGORIA_ERRO_LABEL } from "@/lib/erros";
 export default function AulaModal({
   aula,
   alunos,
-  turmas,
   tarefas,
   vocabulario,
   erros,
@@ -31,7 +30,6 @@ export default function AulaModal({
 }: {
   aula: Aula;
   alunos: Aluno[];
-  turmas: Turma[];
   tarefas: TarefaAula[];
   vocabulario: Vocabulario[];
   erros: ErroAula[];
@@ -47,7 +45,8 @@ export default function AulaModal({
 }) {
   const [titulo, setTitulo] = useState(aula.titulo);
   const [alunoId, setAlunoId] = useState(aula.aluno_id ?? "");
-  const [turmaId, setTurmaId] = useState(aula.turma_id ?? "");
+  // Sem UI pra editar por enquanto - só preserva o valor que a aula já tinha.
+  const turmaId = aula.turma_id ?? "";
   const [data, setData] = useState(aula.data ?? "");
   const [horario, setHorario] = useState(aula.horario ?? "");
   const [status, setStatus] = useState<AulaStatus>(aula.status);
@@ -123,18 +122,6 @@ export default function AulaModal({
           {alunos.map((a) => (
             <option key={a.id} value={a.id}>
               {a.nome}
-            </option>
-          ))}
-        </select>
-        <select
-          value={turmaId}
-          onChange={(e) => setTurmaId(e.target.value)}
-          className={inputClass}
-        >
-          <option value="">Sem turma</option>
-          {turmas.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.nome}
             </option>
           ))}
         </select>

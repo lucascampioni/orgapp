@@ -9,7 +9,6 @@ import type {
   ErroAula,
   Pagamento,
   TarefaAula,
-  Turma,
   Vocabulario,
 } from "@/lib/types";
 
@@ -33,17 +32,15 @@ export default async function AlunoPage({
     redirect("/");
   }
 
-  const [{ data: aluno }, { data: vinculo }, { data: turmas }, { data: aulas }] =
-    await Promise.all([
-      supabase.from("alunos").select("*").eq("id", id).single(),
-      supabase.from("aluno_professor").select("*").eq("aluno_id", id).single(),
-      supabase.from("turmas").select("*").order("nome", { ascending: true }),
-      supabase
-        .from("aulas")
-        .select("*")
-        .eq("aluno_id", id)
-        .order("data", { ascending: true }),
-    ]);
+  const [{ data: aluno }, { data: vinculo }, { data: aulas }] = await Promise.all([
+    supabase.from("alunos").select("*").eq("id", id).single(),
+    supabase.from("aluno_professor").select("*").eq("aluno_id", id).single(),
+    supabase
+      .from("aulas")
+      .select("*")
+      .eq("aluno_id", id)
+      .order("data", { ascending: true }),
+  ]);
 
   if (!aluno) {
     redirect("/alunos");
@@ -82,7 +79,6 @@ export default async function AlunoPage({
       <AlunoPerfil
         aluno={aluno as Aluno}
         vinculo={(vinculo as AlunoProfessor) ?? null}
-        turmas={(turmas as Turma[]) ?? []}
         initialAulas={(aulas as Aula[]) ?? []}
         initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
         initialVocabulario={(vocabulario as Vocabulario[]) ?? []}

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProfessorShell from "@/components/ProfessorShell";
 import AlunosLista from "@/components/AlunosLista";
-import type { Aluno, AlunoProfessor, Aula, Convite, TarefaAula, Turma } from "@/lib/types";
+import type { Aluno, AlunoProfessor, Aula, Convite, TarefaAula } from "@/lib/types";
 
 export default async function AlunosPage() {
   const supabase = await createClient();
@@ -19,29 +19,21 @@ export default async function AlunosPage() {
     redirect("/");
   }
 
-  const [
-    { data: turmas },
-    { data: alunos },
-    { data: alunoProfessor },
-    { data: aulas },
-    { data: tarefasAula },
-    { data: convites },
-  ] = await Promise.all([
-    supabase.from("turmas").select("*").order("nome", { ascending: true }),
-    supabase.from("alunos").select("*").order("nome", { ascending: true }),
-    supabase.from("aluno_professor").select("*"),
-    supabase.from("aulas").select("*").order("data", { ascending: true }),
-    supabase
-      .from("tarefas_aula")
-      .select("*")
-      .order("criado_em", { ascending: true }),
-    supabase.from("convites").select("*").order("criado_em", { ascending: false }),
-  ]);
+  const [{ data: alunos }, { data: alunoProfessor }, { data: aulas }, { data: tarefasAula }, { data: convites }] =
+    await Promise.all([
+      supabase.from("alunos").select("*").order("nome", { ascending: true }),
+      supabase.from("aluno_professor").select("*"),
+      supabase.from("aulas").select("*").order("data", { ascending: true }),
+      supabase
+        .from("tarefas_aula")
+        .select("*")
+        .order("criado_em", { ascending: true }),
+      supabase.from("convites").select("*").order("criado_em", { ascending: false }),
+    ]);
 
   return (
     <ProfessorShell userEmail={user.email ?? ""}>
       <AlunosLista
-        initialTurmas={(turmas as Turma[]) ?? []}
         initialAlunos={(alunos as Aluno[]) ?? []}
         initialAlunoProfessor={(alunoProfessor as AlunoProfessor[]) ?? []}
         initialAulas={(aulas as Aula[]) ?? []}

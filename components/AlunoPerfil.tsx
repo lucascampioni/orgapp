@@ -11,7 +11,6 @@ import type {
   ErroAula,
   Pagamento,
   TarefaAula,
-  Turma,
   Vocabulario,
 } from "@/lib/types";
 import AulaModal from "@/components/AulaModal";
@@ -36,7 +35,6 @@ type AlunoSubTab = "geral" | "aulas" | "vocabulario" | "pagamentos";
 
 export default function AlunoPerfil({
   aluno: alunoInicial,
-  turmas,
   initialAulas,
   initialTarefasAula,
   initialVocabulario,
@@ -45,7 +43,6 @@ export default function AlunoPerfil({
 }: {
   aluno: Aluno;
   vinculo: AlunoProfessor | null;
-  turmas: Turma[];
   initialAulas: Aula[];
   initialTarefasAula: TarefaAula[];
   initialVocabulario: Vocabulario[];
@@ -426,7 +423,6 @@ export default function AlunoPerfil({
         <AulaModal
           aula={openAula}
           alunos={[aluno]}
-          turmas={turmas}
           tarefas={tarefasAula.filter((t) => t.aula_id === openAula.id)}
           vocabulario={vocabulario.filter((v) => v.aula_id === openAula.id)}
           erros={erros.filter((e) => e.aula_id === openAula.id)}
