@@ -132,7 +132,7 @@ export default function AlunosLista({
                 !jaTemCadastro ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"
               }`}
             >
-              Novo aluno
+              Sem cadastro no Lumina
             </button>
             <button
               type="button"
@@ -144,7 +144,7 @@ export default function AlunosLista({
                 jaTemCadastro ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"
               }`}
             >
-              Já tem cadastro
+              Já tem cadastro no Lumina
             </button>
           </div>
         </div>
