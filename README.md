@@ -23,6 +23,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    ```
    Sem isso, o cadastro é bloqueado com um aviso pedindo pra entrar em contato com a administração. Alunos se cadastram sozinhos sem restrição, em `/cadastro`.
 
+4. Foto de perfil (aba "Perfil", tanto da professora quanto do aluno) usa o Supabase Storage - o `schema.sql` já cria o bucket `avatars` (público pra leitura, cada usuário só escreve na própria pasta) via SQL. Se der algum erro de permissão criando o bucket pelo SQL Editor (alguns projetos restringem isso), crie manualmente em **Storage → New bucket** com o nome `avatars` marcado como público, e rode o resto do script normalmente (as policies de leitura/escrita são criadas do mesmo jeito).
+
 ### Navegação
 
 A professora tem uma barra lateral (topo em telas pequenas) com quatro seções: **Dashboard** (visão geral com indicadores, próximas aulas, alunos recentes e insights heurísticos), **Alunos** (lista/cadastro), **Calendário** (visão mensal das aulas, com integração opcional ao Google Calendar) e **Tarefas** (todas as tarefas de todos os alunos, com filtro de pendentes/concluídas). O perfil de cada aluno agora também guarda nível de inglês (escala CEFR, A1-C2), objetivo de estudo, pontos fortes e pontos a desenvolver, editáveis na aba "Visão geral".

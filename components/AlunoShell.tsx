@@ -15,6 +15,7 @@ const NAV = [
   { href: "/aulas", label: "Aulas", icon: "▦" },
   { href: "/vocabulario", label: "Vocabulário", icon: "✎" },
   { href: "/pagamentos", label: "Pagamentos", icon: "$" },
+  { href: "/perfil", label: "Perfil", icon: "⚙" },
 ];
 
 export default function AlunoShell({

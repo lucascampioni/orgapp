@@ -11,6 +11,7 @@ const NAV = [
   { href: "/alunos", label: "Alunos", icon: "☺" },
   { href: "/calendario", label: "Calendário", icon: "▦" },
   { href: "/tarefas", label: "Tarefas", icon: "✓" },
+  { href: "/perfil", label: "Perfil", icon: "⚙" },
 ];
 
 export default function ProfessorShell({

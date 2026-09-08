@@ -749,6 +749,14 @@ drop policy if exists "professores_update_own" on public.professores;
 create policy "professores_update_own" on public.professores for update to authenticated
   using (id = auth.uid()) with check (id = auth.uid());
 
+-- Contas de professora criadas antes do trigger criar_perfil_professor
+-- existir (ex: direto pelo painel do Supabase) não têm linha aqui ainda -
+-- essa policy permite a tela de "Meu perfil" criar via upsert na primeira
+-- vez que a professora salva alguma coisa.
+drop policy if exists "professores_insert_own" on public.professores;
+create policy "professores_insert_own" on public.professores for insert to authenticated
+  with check (id = auth.uid());
+
 -- Lista de e-mails liberados pelo admin pra virar professora. Sem policy
 -- nenhuma de propósito - só a função abaixo (security definer) enxerga essa
 -- tabela; ninguém autenticado consegue ler ou escrever nela direto pela API.
@@ -818,3 +826,34 @@ drop trigger if exists criar_perfil_professor_trigger on auth.users;
 create trigger criar_perfil_professor_trigger
   after insert on auth.users
   for each row execute function public.criar_perfil_professor();
+
+-- ---------------------------------------------------------------------
+-- Foto de perfil (professora e aluno) - guardada no bucket "avatars" do
+-- Storage, um arquivo por usuário em "<user_id>/arquivo.ext" (upsert,
+-- então trocar a foto sobrescreve a anterior em vez de acumular lixo).
+-- ---------------------------------------------------------------------
+
+alter table public.professores add column if not exists foto_url text;
+alter table public.alunos add column if not exists foto_url text;
+
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+drop policy if exists "avatars_leitura_publica" on storage.objects;
+create policy "avatars_leitura_publica" on storage.objects for select
+  using (bucket_id = 'avatars');
+
+-- Só dá pra escrever dentro da própria "pasta" (primeiro pedaço do path =
+-- o próprio user id), tanto pra professora quanto pra aluno.
+drop policy if exists "avatars_upload_proprio" on storage.objects;
+create policy "avatars_upload_proprio" on storage.objects for insert to authenticated
+  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "avatars_update_proprio" on storage.objects;
+create policy "avatars_update_proprio" on storage.objects for update to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "avatars_delete_proprio" on storage.objects;
+create policy "avatars_delete_proprio" on storage.objects for delete to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text);

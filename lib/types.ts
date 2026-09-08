@@ -43,6 +43,7 @@ export interface Aluno {
   pontos_desenvolver: string | null;
   data_nascimento: string | null;
   sexo: Sexo | null;
+  foto_url: string | null;
   criado_em: string;
 }
 
@@ -51,6 +52,7 @@ export interface Professor {
   nome: string;
   data_nascimento: string | null;
   sexo: Sexo | null;
+  foto_url: string | null;
   criado_em: string;
 }
 

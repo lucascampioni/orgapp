@@ -1,0 +1,53 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import ProfessorPerfilView from "@/components/ProfessorPerfilView";
+import AlunoMeuPerfilView from "@/components/AlunoMeuPerfilView";
+import type { Aluno, Professor } from "@/lib/types";
+
+export default async function PerfilPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const role = (user.user_metadata as { role?: string } | null)?.role;
+
+  if (role === "aluno") {
+    const { data: aluno } = await supabase
+      .from("alunos")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    return (
+      <AlunoMeuPerfilView
+        aluno={(aluno as Aluno | null) ?? null}
+        userId={user.id}
+        userEmail={user.email ?? ""}
+      />
+    );
+  }
+
+  const { data: professor } = await supabase
+    .from("professores")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  // Conta antiga (criada antes do trigger que cria essa linha existir) -
+  // monta um perfil vazio em memória; o primeiro "Salvar" já cria a linha.
+  const professorFallback: Professor = professor ?? {
+    id: user.id,
+    nome: user.email?.split("@")[0] ?? "",
+    data_nascimento: null,
+    sexo: null,
+    foto_url: null,
+    criado_em: new Date().toISOString(),
+  };
+
+  return <ProfessorPerfilView professor={professorFallback} userEmail={user.email ?? ""} />;
+}
