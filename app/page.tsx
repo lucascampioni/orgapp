@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProfessorShell from "@/components/ProfessorShell";
 import DashboardHome from "@/components/DashboardHome";
-import AlunoPortal from "@/components/AlunoPortal";
+import AlunoHome from "@/components/AlunoHome";
 import type {
   Aluno,
   AlunoProfessor,
@@ -44,7 +44,7 @@ export default async function Home() {
     ]);
 
     return (
-      <AlunoPortal
+      <AlunoHome
         alunos={(alunos as Aluno[]) ?? []}
         aulas={(aulas as Aula[]) ?? []}
         tarefasAula={(tarefasAula as TarefaAula[]) ?? []}
