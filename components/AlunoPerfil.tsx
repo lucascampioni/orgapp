@@ -26,7 +26,6 @@ import {
 } from "@/components/ui";
 import { NIVEIS_CEFR } from "@/lib/cefr";
 import { OBJETIVOS } from "@/lib/objetivos";
-import { SEXOS } from "@/lib/sexo";
 
 type VincularContaResultado = {
   status: "convite_enviado" | "erro";
@@ -37,7 +36,6 @@ type AlunoSubTab = "geral" | "aulas" | "vocabulario" | "pagamentos";
 
 export default function AlunoPerfil({
   aluno: alunoInicial,
-  vinculo: vinculoInicial,
   turmas,
   initialAulas,
   initialTarefasAula,
@@ -58,7 +56,6 @@ export default function AlunoPerfil({
   const supabase = useMemo(() => createClient(), []);
 
   const [aluno, setAluno] = useState<Aluno>(alunoInicial);
-  const [vinculo, setVinculo] = useState<AlunoProfessor | null>(vinculoInicial);
   const [aulas, setAulas] = useState<Aula[]>(initialAulas);
   const [tarefasAula, setTarefasAula] = useState<TarefaAula[]>(initialTarefasAula);
   const [vocabulario, setVocabulario] = useState<Vocabulario[]>(initialVocabulario);
@@ -79,8 +76,6 @@ export default function AlunoPerfil({
         | "objetivo"
         | "pontos_fortes"
         | "pontos_desenvolver"
-        | "data_nascimento"
-        | "sexo"
       >
     >,
   ) {
@@ -96,19 +91,6 @@ export default function AlunoPerfil({
           setAluno(prev);
         }
       });
-  }
-
-  async function updateVinculoTurma(turmaId: string | null) {
-    const prev = vinculo;
-    setVinculo((cur) => (cur ? { ...cur, turma_id: turmaId } : cur));
-    const { error } = await supabase
-      .from("aluno_professor")
-      .update({ turma_id: turmaId })
-      .eq("aluno_id", aluno.id);
-    if (error) {
-      console.error("Falha ao atualizar turma do aluno", error);
-      setVinculo(prev);
-    }
   }
 
   async function desvincularAluno() {
@@ -404,12 +386,9 @@ export default function AlunoPerfil({
       {sub === "geral" && (
         <AlunoGeral
           aluno={aluno}
-          vinculo={vinculo}
-          turmas={turmas}
           proximaAula={proximasAulas[0] ?? null}
           pendencias={pendencias.length}
           onUpdateAluno={updateAluno}
-          onUpdateTurma={updateVinculoTurma}
           onDesvincular={desvincularAluno}
           onCompartilhar={vincularAlunoPorEmail}
           onVincularConta={vincularContaAluno}
@@ -471,37 +450,24 @@ export default function AlunoPerfil({
 
 function AlunoGeral({
   aluno,
-  vinculo,
-  turmas,
   proximaAula,
   pendencias,
   onUpdateAluno,
-  onUpdateTurma,
   onDesvincular,
   onCompartilhar,
   onVincularConta,
 }: {
   aluno: Aluno;
-  vinculo: AlunoProfessor | null;
-  turmas: Turma[];
   proximaAula: Aula | null;
   pendencias: number;
   onUpdateAluno: (
     fields: Partial<
       Pick<
         Aluno,
-        | "contato"
-        | "observacoes"
-        | "nivel_cefr"
-        | "objetivo"
-        | "pontos_fortes"
-        | "pontos_desenvolver"
-        | "data_nascimento"
-        | "sexo"
+        "contato" | "observacoes" | "nivel_cefr" | "objetivo" | "pontos_fortes" | "pontos_desenvolver"
       >
     >,
   ) => void;
-  onUpdateTurma: (turmaId: string | null) => void;
   onDesvincular: () => void;
   onCompartilhar: (email: string) => Promise<string | null>;
   onVincularConta: (email: string) => Promise<VincularContaResultado>;
@@ -594,33 +560,6 @@ function AlunoGeral({
         </div>
       </div>
 
-      <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <div>
-          <label className={labelClass}>Data de nascimento</label>
-          <input
-            type="date"
-            defaultValue={aluno.data_nascimento ?? ""}
-            onChange={(e) => onUpdateAluno({ data_nascimento: e.target.value || null })}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Sexo</label>
-          <select
-            defaultValue={aluno.sexo ?? ""}
-            onChange={(e) => onUpdateAluno({ sexo: (e.target.value || null) as Aluno["sexo"] })}
-            className={inputClass}
-          >
-            <option value="">Não definido</option>
-            {SEXOS.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       <div className="mb-3 rounded-lg border border-border bg-surface-2 p-3">
         <div className="mb-2 text-xs font-medium text-muted">
           E-mail do aluno
@@ -635,7 +574,7 @@ function AlunoGeral({
             type="email"
             value={emailAluno}
             onChange={(e) => setEmailAluno(e.target.value)}
-            placeholder="e-mail que o aluno vai usar pra criar a conta"
+            placeholder="e-mail da conta do aluno"
             className={`min-w-[180px] flex-1 ${inputClass}`}
           />
           <button
@@ -646,22 +585,12 @@ function AlunoGeral({
             {vinculando ? "Enviando..." : "Enviar convite"}
           </button>
         </div>
+        <p className="mt-2 text-xs text-faint">
+          Funciona tanto se o aluno já tem conta no Lumina quanto se ainda vai criar uma - o
+          convite fica esperando o aceite dele nos dois casos.
+        </p>
         {msgVinculo && <div className="mt-2 text-xs text-muted">{msgVinculo}</div>}
       </div>
-
-      <label className={labelClass}>Turma</label>
-      <select
-        defaultValue={vinculo?.turma_id ?? ""}
-        onChange={(e) => onUpdateTurma(e.target.value || null)}
-        className={`mb-3 ${inputClass}`}
-      >
-        <option value="">Sem turma</option>
-        {turmas.map((t) => (
-          <option key={t.id} value={t.id}>
-            {t.nome}
-          </option>
-        ))}
-      </select>
 
       <label className={labelClass}>Observações</label>
       <textarea
