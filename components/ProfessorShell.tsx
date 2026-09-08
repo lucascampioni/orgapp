@@ -7,11 +7,11 @@ import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const NAV = [
-  { href: "/", label: "Dashboard", icon: "◱" },
+  { href: "/", label: "Início", icon: "◱" },
   { href: "/alunos", label: "Alunos", icon: "☺" },
   { href: "/calendario", label: "Calendário", icon: "▦" },
   { href: "/tarefas", label: "Tarefas", icon: "✓" },
-  { href: "/perfil", label: "Perfil", icon: "⚙" },
+  { href: "/perfil", label: "Perfil", icon: "☻" },
 ];
 
 export default function ProfessorShell({
