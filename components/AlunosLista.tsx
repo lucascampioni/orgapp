@@ -119,18 +119,35 @@ export default function AlunosLista({
       <h1 className="mb-4 font-display text-2xl font-semibold text-ink">Alunos</h1>
 
       <div className="mb-6 rounded-xl border border-border bg-surface p-3">
-        <label className="mb-3 flex items-center gap-2 text-sm text-ink">
-          <input
-            type="checkbox"
-            checked={jaTemCadastro}
-            onChange={(e) => {
-              setJaTemCadastro(e.target.checked);
-              setErroConvite(null);
-            }}
-            className="h-4 w-4"
-          />
-          Esse aluno já tem cadastro no Lumina
-        </label>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <span className="text-sm font-medium text-ink">Adicionar aluno</span>
+          <div className="inline-flex shrink-0 rounded-lg border border-border p-0.5">
+            <button
+              type="button"
+              onClick={() => {
+                setJaTemCadastro(false);
+                setErroConvite(null);
+              }}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                !jaTemCadastro ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"
+              }`}
+            >
+              Novo aluno
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setJaTemCadastro(true);
+                setErroConvite(null);
+              }}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                jaTemCadastro ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"
+              }`}
+            >
+              Já tem cadastro
+            </button>
+          </div>
+        </div>
 
         <div className="mb-2">
           <label className="mb-1 block text-xs font-medium text-muted">Idioma que você vai ensinar</label>
