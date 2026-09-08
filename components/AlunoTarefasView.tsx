@@ -2,30 +2,30 @@
 
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Aluno, Aula, TarefaAula } from "@/lib/types";
+import type { AlunoProfessor, Aula, TarefaAula } from "@/lib/types";
 import { TabButton } from "@/components/ui";
-import { useAlunoAtivo } from "@/lib/useAlunoAtivo";
+import { useVinculoAtivo } from "@/lib/useVinculoAtivo";
 import AlunoShell from "@/components/AlunoShell";
 
 type Filtro = "pendentes" | "concluidas";
 
 export default function AlunoTarefasView({
-  alunos,
+  vinculos,
   aulas,
   tarefasAula,
   userEmail,
 }: {
-  alunos: Aluno[];
+  vinculos: AlunoProfessor[];
   aulas: Aula[];
   tarefasAula: TarefaAula[];
   userEmail: string;
 }) {
-  const [alunoAtivoId, selecionarAluno] = useAlunoAtivo(alunos);
+  const [professorIdAtivo, selecionarVinculo] = useVinculoAtivo(vinculos);
   const [tarefas, setTarefas] = useState<TarefaAula[]>(tarefasAula);
   const [filtro, setFiltro] = useState<Filtro>("pendentes");
   const supabase = useMemo(() => createClient(), []);
 
-  const aluno = alunos.find((a) => a.id === alunoAtivoId) ?? alunos[0];
+  const vinculo = vinculos.find((v) => v.professor_id === professorIdAtivo) ?? vinculos[0];
   const aulaPorId = new Map(aulas.map((a) => [a.id, a]));
 
   async function toggleTarefa(t: TarefaAula) {
@@ -54,7 +54,7 @@ export default function AlunoTarefasView({
     }
   }
 
-  if (!aluno) {
+  if (!vinculo) {
     return (
       <div className="mx-auto max-w-[900px] px-6 py-7 text-sm text-muted">
         Nenhum vínculo encontrado ainda.
@@ -62,7 +62,7 @@ export default function AlunoTarefasView({
     );
   }
 
-  const minhasAulas = aulas.filter((a) => a.aluno_id === aluno.id);
+  const minhasAulas = aulas.filter((a) => a.professor_id === vinculo.professor_id);
   const minhasTarefas = tarefas
     .filter((t) => minhasAulas.some((a) => a.id === t.aula_id))
     .sort((a, b) => b.criado_em.localeCompare(a.criado_em));
@@ -71,9 +71,9 @@ export default function AlunoTarefasView({
   return (
     <AlunoShell
       userEmail={userEmail}
-      alunos={alunos}
-      alunoAtivoId={aluno.id}
-      onSelecionarAluno={selecionarAluno}
+      vinculos={vinculos}
+      vinculoAtivoId={vinculo.professor_id}
+      onSelecionarVinculo={selecionarVinculo}
     >
       <h1 className="mb-4 font-display text-2xl font-semibold text-ink">Tarefas</h1>
 

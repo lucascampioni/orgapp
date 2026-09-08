@@ -27,12 +27,14 @@ export default async function Home() {
   if (role === "aluno") {
     const [
       { data: alunos },
+      { data: vinculos },
       { data: aulas },
       { data: tarefasAula },
       { data: vocabulario },
       { data: pagamentos },
     ] = await Promise.all([
       supabase.from("alunos").select("*").order("nome", { ascending: true }),
+      supabase.from("aluno_professor").select("*"),
       supabase.from("aulas").select("*").order("data", { ascending: true }),
       supabase.from("tarefas_aula").select("*").order("criado_em", { ascending: true }),
       supabase.from("vocabulario").select("*").order("criado_em", { ascending: false }),
@@ -42,6 +44,7 @@ export default async function Home() {
     return (
       <AlunoHome
         alunos={(alunos as Aluno[]) ?? []}
+        vinculos={(vinculos as AlunoProfessor[]) ?? []}
         aulas={(aulas as Aula[]) ?? []}
         tarefasAula={(tarefasAula as TarefaAula[]) ?? []}
         vocabulario={(vocabulario as Vocabulario[]) ?? []}

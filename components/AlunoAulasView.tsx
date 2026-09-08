@@ -1,28 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import type { Aluno, Aula } from "@/lib/types";
+import type { AlunoProfessor, Aula } from "@/lib/types";
 import { hoje, TabButton } from "@/components/ui";
-import { useAlunoAtivo } from "@/lib/useAlunoAtivo";
+import { useVinculoAtivo } from "@/lib/useVinculoAtivo";
 import AlunoShell from "@/components/AlunoShell";
 
 type Filtro = "proximas" | "historico";
 
 export default function AlunoAulasView({
-  alunos,
+  vinculos,
   aulas,
   userEmail,
 }: {
-  alunos: Aluno[];
+  vinculos: AlunoProfessor[];
   aulas: Aula[];
   userEmail: string;
 }) {
-  const [alunoAtivoId, selecionarAluno] = useAlunoAtivo(alunos);
+  const [professorIdAtivo, selecionarVinculo] = useVinculoAtivo(vinculos);
   const [filtro, setFiltro] = useState<Filtro>("proximas");
 
-  const aluno = alunos.find((a) => a.id === alunoAtivoId) ?? alunos[0];
+  const vinculo = vinculos.find((v) => v.professor_id === professorIdAtivo) ?? vinculos[0];
 
-  if (!aluno) {
+  if (!vinculo) {
     return (
       <div className="mx-auto max-w-[900px] px-6 py-7 text-sm text-muted">
         Nenhum vínculo encontrado ainda.
@@ -31,7 +31,7 @@ export default function AlunoAulasView({
   }
 
   const hojeStr = hoje();
-  const minhasAulas = aulas.filter((a) => a.aluno_id === aluno.id);
+  const minhasAulas = aulas.filter((a) => a.professor_id === vinculo.professor_id);
   const proximasAulas = minhasAulas
     .filter((a) => a.status === "planejada" && a.data && a.data >= hojeStr)
     .sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
@@ -44,9 +44,9 @@ export default function AlunoAulasView({
   return (
     <AlunoShell
       userEmail={userEmail}
-      alunos={alunos}
-      alunoAtivoId={aluno.id}
-      onSelecionarAluno={selecionarAluno}
+      vinculos={vinculos}
+      vinculoAtivoId={vinculo.professor_id}
+      onSelecionarVinculo={selecionarVinculo}
     >
       <h1 className="mb-4 font-display text-2xl font-semibold text-ink">Aulas</h1>
 

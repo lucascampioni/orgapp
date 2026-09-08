@@ -625,6 +625,14 @@ create policy "erros_aula_all_own" on public.erros_aula for all to authenticated
 -- marcar a própria tarefa como concluída.
 -- ---------------------------------------------------------------------
 
+-- Precisa enxergar os próprios vínculos (um por professora) pra montar o
+-- seletor de "perfil" (idioma + professora) no portal do aluno.
+drop policy if exists "aluno_professor_select_aluno" on public.aluno_professor;
+create policy "aluno_professor_select_aluno" on public.aluno_professor for select to authenticated
+  using (exists (
+    select 1 from public.alunos a where a.id = aluno_professor.aluno_id and a.user_id = auth.uid()
+  ));
+
 drop policy if exists "aulas_select_aluno" on public.aulas;
 create policy "aulas_select_aluno" on public.aulas for select to authenticated
   using (exists (

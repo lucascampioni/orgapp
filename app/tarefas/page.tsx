@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import ProfessorShell from "@/components/ProfessorShell";
 import TarefasLista from "@/components/TarefasLista";
 import AlunoTarefasView from "@/components/AlunoTarefasView";
-import type { Aluno, Aula, TarefaAula } from "@/lib/types";
+import type { Aluno, AlunoProfessor, Aula, TarefaAula } from "@/lib/types";
 
 export default async function TarefasPage() {
   const supabase = await createClient();
@@ -18,15 +18,15 @@ export default async function TarefasPage() {
   const role = (user.user_metadata as { role?: string } | null)?.role;
 
   if (role === "aluno") {
-    const [{ data: alunos }, { data: aulas }, { data: tarefas }] = await Promise.all([
-      supabase.from("alunos").select("*").order("nome", { ascending: true }),
+    const [{ data: vinculos }, { data: aulas }, { data: tarefas }] = await Promise.all([
+      supabase.from("aluno_professor").select("*"),
       supabase.from("aulas").select("*"),
       supabase.from("tarefas_aula").select("*"),
     ]);
 
     return (
       <AlunoTarefasView
-        alunos={(alunos as Aluno[]) ?? []}
+        vinculos={(vinculos as AlunoProfessor[]) ?? []}
         aulas={(aulas as Aula[]) ?? []}
         tarefasAula={(tarefas as TarefaAula[]) ?? []}
         userEmail={user.email ?? ""}

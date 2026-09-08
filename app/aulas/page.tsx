@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AlunoAulasView from "@/components/AlunoAulasView";
-import type { Aluno, Aula } from "@/lib/types";
+import type { AlunoProfessor, Aula } from "@/lib/types";
 
 export default async function AulasPage() {
   const supabase = await createClient();
@@ -18,14 +18,14 @@ export default async function AulasPage() {
     redirect("/");
   }
 
-  const [{ data: alunos }, { data: aulas }] = await Promise.all([
-    supabase.from("alunos").select("*").order("nome", { ascending: true }),
+  const [{ data: vinculos }, { data: aulas }] = await Promise.all([
+    supabase.from("aluno_professor").select("*"),
     supabase.from("aulas").select("*"),
   ]);
 
   return (
     <AlunoAulasView
-      alunos={(alunos as Aluno[]) ?? []}
+      vinculos={(vinculos as AlunoProfessor[]) ?? []}
       aulas={(aulas as Aula[]) ?? []}
       userEmail={user.email ?? ""}
     />

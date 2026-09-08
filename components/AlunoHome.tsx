@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type { Aluno, Aula, Pagamento, TarefaAula, Vocabulario } from "@/lib/types";
+import type { Aluno, AlunoProfessor, Aula, Pagamento, TarefaAula, Vocabulario } from "@/lib/types";
 import { hoje } from "@/components/ui";
-import { useAlunoAtivo } from "@/lib/useAlunoAtivo";
+import { useVinculoAtivo } from "@/lib/useVinculoAtivo";
 import AlunoShell from "@/components/AlunoShell";
 
 function saudacao() {
@@ -30,6 +30,7 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
 
 export default function AlunoHome({
   alunos,
+  vinculos,
   aulas,
   tarefasAula,
   vocabulario,
@@ -37,15 +38,16 @@ export default function AlunoHome({
   userEmail,
 }: {
   alunos: Aluno[];
+  vinculos: AlunoProfessor[];
   aulas: Aula[];
   tarefasAula: TarefaAula[];
   vocabulario: Vocabulario[];
   pagamentos: Pagamento[];
   userEmail: string;
 }) {
-  const [alunoAtivoId, selecionarAluno] = useAlunoAtivo(alunos);
+  const [professorIdAtivo, selecionarVinculo] = useVinculoAtivo(vinculos);
 
-  if (alunos.length === 0) {
+  if (alunos.length === 0 || vinculos.length === 0) {
     return (
       <div className="mx-auto max-w-[900px] px-6 py-7">
         <div className="rounded-xl border border-border bg-surface p-5 text-sm text-muted">
@@ -57,13 +59,14 @@ export default function AlunoHome({
     );
   }
 
-  const aluno = alunos.find((a) => a.id === alunoAtivoId) ?? alunos[0];
+  const aluno = alunos[0];
+  const vinculo = vinculos.find((v) => v.professor_id === professorIdAtivo) ?? vinculos[0];
   const hojeStr = hoje();
 
-  const minhasAulas = aulas.filter((a) => a.aluno_id === aluno.id);
+  const minhasAulas = aulas.filter((a) => a.professor_id === vinculo.professor_id);
   const minhasTarefas = tarefasAula.filter((t) => minhasAulas.some((a) => a.id === t.aula_id));
-  const meuVocab = vocabulario.filter((v) => v.aluno_id === aluno.id);
-  const meusPagamentos = pagamentos.filter((p) => p.aluno_id === aluno.id);
+  const meuVocab = vocabulario.filter((v) => v.professor_id === vinculo.professor_id);
+  const meusPagamentos = pagamentos.filter((p) => p.professor_id === vinculo.professor_id);
 
   const proximasAulas = minhasAulas
     .filter((a) => a.status === "planejada" && a.data && a.data >= hojeStr)
@@ -77,15 +80,18 @@ export default function AlunoHome({
   return (
     <AlunoShell
       userEmail={userEmail}
-      alunos={alunos}
-      alunoAtivoId={aluno.id}
-      onSelecionarAluno={selecionarAluno}
+      vinculos={vinculos}
+      vinculoAtivoId={vinculo.professor_id}
+      onSelecionarVinculo={selecionarVinculo}
     >
       <header className="mb-6">
         <h1 className="font-display text-2xl font-semibold text-ink">
           {saudacao()}, {aluno.nome.split(" ")[0]}!
         </h1>
-        <p className="mt-1 text-sm text-muted">Aqui está o resumo das suas aulas de inglês.</p>
+        <p className="mt-1 text-sm text-muted">
+          Aqui está o resumo das suas aulas{vinculo.idioma ? ` de ${vinculo.idioma}` : ""}
+          {vinculo.professor_nome ? ` com a professora ${vinculo.professor_nome}` : ""}.
+        </p>
       </header>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">

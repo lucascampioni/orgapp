@@ -5,21 +5,23 @@ import { createClient } from "@/lib/supabase/client";
 import { uploadAvatar } from "@/lib/avatar";
 import PerfilForm from "@/components/PerfilForm";
 import AlunoShell from "@/components/AlunoShell";
-import { useAlunoAtivo } from "@/lib/useAlunoAtivo";
-import type { Aluno, Sexo } from "@/lib/types";
+import { useVinculoAtivo } from "@/lib/useVinculoAtivo";
+import type { Aluno, AlunoProfessor, Sexo } from "@/lib/types";
 
 export default function AlunoMeuPerfilView({
   aluno: alunoInicial,
+  vinculos,
   userId,
   userEmail,
 }: {
   aluno: Aluno | null;
+  vinculos: AlunoProfessor[];
   userId: string;
   userEmail: string;
 }) {
   const [aluno, setAluno] = useState(alunoInicial);
   const supabase = useMemo(() => createClient(), []);
-  const [alunoAtivoId, selecionarAluno] = useAlunoAtivo(aluno ? [aluno] : []);
+  const [professorIdAtivo, selecionarVinculo] = useVinculoAtivo(vinculos);
 
   async function salvar(fields: {
     nome: string;
@@ -51,9 +53,9 @@ export default function AlunoMeuPerfilView({
   return (
     <AlunoShell
       userEmail={userEmail}
-      alunos={aluno ? [aluno] : []}
-      alunoAtivoId={alunoAtivoId}
-      onSelecionarAluno={selecionarAluno}
+      vinculos={vinculos}
+      vinculoAtivoId={professorIdAtivo}
+      onSelecionarVinculo={selecionarVinculo}
     >
       {aluno ? (
         <PerfilForm

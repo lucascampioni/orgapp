@@ -86,6 +86,7 @@ export type AulaStatus = "planejada" | "dada";
 export interface Aula {
   id: string;
   aluno_id: string | null;
+  professor_id: string;
   turma_id: string | null;
   titulo: string;
   data: string | null;
@@ -107,6 +108,7 @@ export interface ErroAula {
   id: string;
   aula_id: string;
   aluno_id: string;
+  professor_id: string;
   frase_original: string;
   correcao: string | null;
   explicacao: string | null;
@@ -131,6 +133,7 @@ export interface TarefaAula {
 export interface Vocabulario {
   id: string;
   aluno_id: string;
+  professor_id: string;
   aula_id: string | null;
   termo: string;
   significado: string | null;
@@ -141,6 +144,7 @@ export interface Vocabulario {
 export interface Pagamento {
   id: string;
   aluno_id: string;
+  professor_id: string;
   valor: number;
   vencimento: string;
   pago_em: string | null;

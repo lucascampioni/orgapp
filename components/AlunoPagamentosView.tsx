@@ -1,22 +1,22 @@
 "use client";
 
-import type { Aluno, Pagamento } from "@/lib/types";
-import { useAlunoAtivo } from "@/lib/useAlunoAtivo";
+import type { AlunoProfessor, Pagamento } from "@/lib/types";
+import { useVinculoAtivo } from "@/lib/useVinculoAtivo";
 import AlunoShell from "@/components/AlunoShell";
 
 export default function AlunoPagamentosView({
-  alunos,
+  vinculos,
   pagamentos,
   userEmail,
 }: {
-  alunos: Aluno[];
+  vinculos: AlunoProfessor[];
   pagamentos: Pagamento[];
   userEmail: string;
 }) {
-  const [alunoAtivoId, selecionarAluno] = useAlunoAtivo(alunos);
-  const aluno = alunos.find((a) => a.id === alunoAtivoId) ?? alunos[0];
+  const [professorIdAtivo, selecionarVinculo] = useVinculoAtivo(vinculos);
+  const vinculo = vinculos.find((v) => v.professor_id === professorIdAtivo) ?? vinculos[0];
 
-  if (!aluno) {
+  if (!vinculo) {
     return (
       <div className="mx-auto max-w-[900px] px-6 py-7 text-sm text-muted">
         Nenhum vínculo encontrado ainda.
@@ -24,7 +24,7 @@ export default function AlunoPagamentosView({
     );
   }
 
-  const meusPagamentos = pagamentos.filter((p) => p.aluno_id === aluno.id);
+  const meusPagamentos = pagamentos.filter((p) => p.professor_id === vinculo.professor_id);
   const proximos = meusPagamentos
     .filter((p) => !p.pago_em)
     .sort((a, b) => a.vencimento.localeCompare(b.vencimento));
@@ -35,9 +35,9 @@ export default function AlunoPagamentosView({
   return (
     <AlunoShell
       userEmail={userEmail}
-      alunos={alunos}
-      alunoAtivoId={aluno.id}
-      onSelecionarAluno={selecionarAluno}
+      vinculos={vinculos}
+      vinculoAtivoId={vinculo.professor_id}
+      onSelecionarVinculo={selecionarVinculo}
     >
       <h1 className="mb-4 font-display text-2xl font-semibold text-ink">Pagamentos</h1>
 

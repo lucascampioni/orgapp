@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AlunoPagamentosView from "@/components/AlunoPagamentosView";
-import type { Aluno, Pagamento } from "@/lib/types";
+import type { AlunoProfessor, Pagamento } from "@/lib/types";
 
 export default async function PagamentosPage() {
   const supabase = await createClient();
@@ -18,14 +18,14 @@ export default async function PagamentosPage() {
     redirect("/");
   }
 
-  const [{ data: alunos }, { data: pagamentos }] = await Promise.all([
-    supabase.from("alunos").select("*").order("nome", { ascending: true }),
+  const [{ data: vinculos }, { data: pagamentos }] = await Promise.all([
+    supabase.from("aluno_professor").select("*"),
     supabase.from("pagamentos").select("*").order("vencimento", { ascending: true }),
   ]);
 
   return (
     <AlunoPagamentosView
-      alunos={(alunos as Aluno[]) ?? []}
+      vinculos={(vinculos as AlunoProfessor[]) ?? []}
       pagamentos={(pagamentos as Pagamento[]) ?? []}
       userEmail={user.email ?? ""}
     />

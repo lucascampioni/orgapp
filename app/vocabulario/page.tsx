@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AlunoVocabularioView from "@/components/AlunoVocabularioView";
-import type { Aluno, Vocabulario } from "@/lib/types";
+import type { AlunoProfessor, Vocabulario } from "@/lib/types";
 
 export default async function VocabularioPage() {
   const supabase = await createClient();
@@ -18,14 +18,14 @@ export default async function VocabularioPage() {
     redirect("/");
   }
 
-  const [{ data: alunos }, { data: vocabulario }] = await Promise.all([
-    supabase.from("alunos").select("*").order("nome", { ascending: true }),
+  const [{ data: vinculos }, { data: vocabulario }] = await Promise.all([
+    supabase.from("aluno_professor").select("*"),
     supabase.from("vocabulario").select("*").order("criado_em", { ascending: false }),
   ]);
 
   return (
     <AlunoVocabularioView
-      alunos={(alunos as Aluno[]) ?? []}
+      vinculos={(vinculos as AlunoProfessor[]) ?? []}
       vocabulario={(vocabulario as Vocabulario[]) ?? []}
       userEmail={user.email ?? ""}
     />

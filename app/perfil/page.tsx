@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProfessorPerfilView from "@/components/ProfessorPerfilView";
 import AlunoMeuPerfilView from "@/components/AlunoMeuPerfilView";
-import type { Aluno, Professor } from "@/lib/types";
+import type { Aluno, AlunoProfessor, Professor } from "@/lib/types";
 
 export default async function PerfilPage() {
   const supabase = await createClient();
@@ -23,9 +23,14 @@ export default async function PerfilPage() {
       .eq("user_id", user.id)
       .maybeSingle();
 
+    const { data: vinculos } = aluno
+      ? await supabase.from("aluno_professor").select("*").eq("aluno_id", aluno.id)
+      : { data: [] };
+
     return (
       <AlunoMeuPerfilView
         aluno={(aluno as Aluno | null) ?? null}
+        vinculos={(vinculos as AlunoProfessor[]) ?? []}
         userId={user.id}
         userEmail={user.email ?? ""}
       />

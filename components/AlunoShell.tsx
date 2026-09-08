@@ -7,7 +7,7 @@ import Logo from "@/components/Logo";
 import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import { createClient } from "@/lib/supabase/client";
-import type { Aluno, Convite } from "@/lib/types";
+import type { AlunoProfessor, Convite } from "@/lib/types";
 
 const NAV = [
   { href: "/", label: "Início", icon: "◱" },
@@ -20,15 +20,15 @@ const NAV = [
 
 export default function AlunoShell({
   userEmail,
-  alunos,
-  alunoAtivoId,
-  onSelecionarAluno,
+  vinculos,
+  vinculoAtivoId,
+  onSelecionarVinculo,
   children,
 }: {
   userEmail: string;
-  alunos: Aluno[];
-  alunoAtivoId: string;
-  onSelecionarAluno: (id: string) => void;
+  vinculos: AlunoProfessor[];
+  vinculoAtivoId: string;
+  onSelecionarVinculo: (professorId: string) => void;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -134,20 +134,20 @@ export default function AlunoShell({
           ))}
         </nav>
 
-        {alunos.length > 1 && (
+        {vinculos.length > 1 && (
           <div className="mt-4 flex flex-col gap-1 border-t border-border pt-4">
-            <div className="mb-1 text-xs font-medium text-muted">Aluno</div>
-            {alunos.map((a) => (
+            <div className="mb-1 text-xs font-medium text-muted">Perfil</div>
+            {vinculos.map((v) => (
               <button
-                key={a.id}
-                onClick={() => onSelecionarAluno(a.id)}
+                key={v.id}
+                onClick={() => onSelecionarVinculo(v.professor_id)}
                 className={`rounded-lg px-3 py-1.5 text-left text-[13px] transition ${
-                  a.id === alunoAtivoId
+                  v.professor_id === vinculoAtivoId
                     ? "bg-surface-2 text-ink"
                     : "text-muted hover:bg-surface-2 hover:text-ink"
                 }`}
               >
-                {a.nome}
+                {v.idioma ?? "Aulas"} - {v.professor_nome ? `Professora ${v.professor_nome}` : "Professora"}
               </button>
             ))}
           </div>
