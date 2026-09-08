@@ -49,13 +49,13 @@ export default function AlunoHome({
 
   if (alunos.length === 0 || vinculos.length === 0) {
     return (
-      <div className="mx-auto max-w-[900px] px-6 py-7">
+      <AlunoShell userEmail={userEmail} vinculos={[]} vinculoAtivoId="" onSelecionarVinculo={() => {}}>
         <div className="rounded-xl border border-border bg-surface p-5 text-sm text-muted">
           Nenhum vínculo encontrado ainda. Peça pra sua professora cadastrar o e-mail{" "}
           <span className="text-ink">{userEmail}</span> no seu perfil dentro do Lumina - assim
           que ela fizer isso, suas aulas aparecem aqui automaticamente.
         </div>
-      </div>
+      </AlunoShell>
     );
   }
 

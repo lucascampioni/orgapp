@@ -56,9 +56,9 @@ export default function AlunoTarefasView({
 
   if (!vinculo) {
     return (
-      <div className="mx-auto max-w-[900px] px-6 py-7 text-sm text-muted">
-        Nenhum vínculo encontrado ainda.
-      </div>
+      <AlunoShell userEmail={userEmail} vinculos={[]} vinculoAtivoId="" onSelecionarVinculo={() => {}}>
+        <div className="text-sm text-muted">Nenhum vínculo encontrado ainda.</div>
+      </AlunoShell>
     );
   }
 
