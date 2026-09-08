@@ -62,7 +62,7 @@ const SUMMARY_TOOL = {
           required: ["frase_original", "categoria"],
         },
         description:
-          "Erros claros que o ALUNO (não a professora) cometeu ao falar inglês durante a aula. Só inclua erros que dá pra identificar com confiança pela transcrição. Pode ser vazia.",
+          "Erros claros que o ALUNO (não a professora) cometeu ao falar inglês durante a aula. ATENÇÃO: a transcrição vem de reconhecimento de voz automático e às vezes transcreve errado uma palavra parecida foneticamente (ex: 'wheel' virar 'Will', que não faz sentido nenhum na frase) - antes de reportar um erro, use o contexto pra checar se a palavra estranha faz sentido; se não fizer, é provável que seja erro de transcrição, não erro do aluno, e nesse caso troque pela palavra que o aluno realmente disse (ou não inclua o erro, se não der pra ter certeza). Só inclua erros de fala reais do aluno (gramática, vocabulário, pronúncia etc.) que dá pra identificar com confiança. Pode ser vazia.",
       },
       pontos_positivos: {
         type: "array",
@@ -95,7 +95,7 @@ export async function summarize(transcript: string): Promise<ResumoIA> {
     messages: [
       {
         role: "user",
-        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Gere o resumo, os tópicos abordados, os erros que o ALUNO cometeu ao falar inglês, os pontos positivos, os pontos a melhorar e uma sugestão pra próxima aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
+        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo), gerada por reconhecimento de voz automático - pode ter palavras transcritas erradas por soarem parecido com a palavra certa (ex: 'wheel' virar 'Will'). Sempre que uma palavra não fizer sentido no contexto da frase, considere que pode ser erro de transcrição em vez de erro do aluno. Gere o resumo, os tópicos abordados, os erros que o ALUNO cometeu ao falar inglês, os pontos positivos, os pontos a melhorar e uma sugestão pra próxima aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
       },
     ],
   });
@@ -158,7 +158,7 @@ export async function extractVocabulario(transcript: string): Promise<Vocabulari
     messages: [
       {
         role: "user",
-        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo). Liste todo vocabulário (palavra ou expressão em inglês) que foi traduzido, explicado ou exemplificado durante a aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
+        content: `Esta é a transcrição de uma aula de inglês (pode ter trechos em português, quando a professora explica algo), gerada por reconhecimento de voz automático - pode ter transcrito uma palavra errada por soar parecido com a certa (ex: 'wheel' virar 'Will'); se uma palavra não fizer sentido no contexto, considere a possibilidade de erro de transcrição antes de listá-la como vocabulário. Liste todo vocabulário (palavra ou expressão em inglês) que foi traduzido, explicado ou exemplificado durante a aula, usando a ferramenta disponível.\n\nTranscrição:\n${transcript}`,
       },
     ],
   });
