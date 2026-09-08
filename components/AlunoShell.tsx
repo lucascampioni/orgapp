@@ -7,6 +7,7 @@ import Logo from "@/components/Logo";
 import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import { createClient } from "@/lib/supabase/client";
+import { PersonIcon } from "@/components/ui";
 import type { AlunoProfessor, Convite } from "@/lib/types";
 
 const NAV = [
@@ -15,7 +16,7 @@ const NAV = [
   { href: "/aulas", label: "Aulas", icon: "▦" },
   { href: "/vocabulario", label: "Vocabulário", icon: "✎" },
   { href: "/pagamentos", label: "Pagamentos", icon: "$" },
-  { href: "/perfil", label: "Perfil", icon: "☻" },
+  { href: "/perfil", label: "Perfil", icon: null },
 ];
 
 export default function AlunoShell({
@@ -132,7 +133,11 @@ export default function AlunoShell({
                   : "text-muted hover:bg-surface-2 hover:text-ink"
               }`}
             >
-              <span aria-hidden="true">{item.icon}</span>
+              {item.icon ? (
+                <span aria-hidden="true">{item.icon}</span>
+              ) : (
+                <PersonIcon className="h-4 w-4 shrink-0" />
+              )}
               {item.label}
             </Link>
           ))}

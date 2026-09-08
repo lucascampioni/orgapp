@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import Logo from "@/components/Logo";
 import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
+import { PersonIcon } from "@/components/ui";
 
 const NAV = [
   { href: "/", label: "Início", icon: "◱" },
   { href: "/alunos", label: "Alunos", icon: "☺" },
   { href: "/calendario", label: "Calendário", icon: "▦" },
   { href: "/tarefas", label: "Tarefas", icon: "✓" },
-  { href: "/perfil", label: "Perfil", icon: "☻" },
+  { href: "/perfil", label: "Perfil", icon: null },
 ];
 
 export default function ProfessorShell({
@@ -53,7 +54,11 @@ export default function ProfessorShell({
                   : "text-muted hover:bg-surface-2 hover:text-ink"
               }`}
             >
-              <span aria-hidden="true">{item.icon}</span>
+              {item.icon ? (
+                <span aria-hidden="true">{item.icon}</span>
+              ) : (
+                <PersonIcon className="h-4 w-4 shrink-0" />
+              )}
               {item.label}
             </Link>
           ))}

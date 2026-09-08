@@ -11,6 +11,24 @@ export const secondaryButtonClass =
   "rounded-lg border border-border px-3 py-1.5 text-[13px] text-muted transition hover:text-ink";
 export const dangerLinkClass = "text-[13px] text-muted transition hover:text-danger";
 
+export function PersonIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+    </svg>
+  );
+}
+
 export function TabButton({
   active,
   label,
