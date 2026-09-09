@@ -25,6 +25,42 @@ function somarDias(iso: string, dias: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+const HORIZONTE_DIAS_SEM_FIM = 180; // ~6 meses, quando não tem quantidade limite
+const MAX_OCORRENCIAS = 120; // teto de segurança, independente do modo
+
+/**
+ * Gera as datas de uma recorrência semanal (não existe "série recorrente"
+ * no banco - cada aula é uma linha independente, então isso materializa
+ * todas as ocorrências de uma vez). Sem diasSemana, é só a própria
+ * dataInicial (caso não-recorrente). Sem limiteQuantidade, gera dentro de
+ * um horizonte fixo em vez de tentar ser "infinito" de verdade.
+ */
+function gerarOcorrencias(
+  dataInicial: string,
+  diasSemana: number[],
+  intervaloSemanas: number,
+  limiteQuantidade: number | null,
+): string[] {
+  if (diasSemana.length === 0) return [dataInicial];
+
+  const dataLimite = limiteQuantidade ? null : somarDias(dataInicial, HORIZONTE_DIAS_SEM_FIM);
+  const maxOcorrencias = limiteQuantidade ? Math.min(limiteQuantidade, MAX_OCORRENCIAS) : MAX_OCORRENCIAS;
+  const diaSemanaBase = new Date(`${dataInicial}T00:00:00Z`).getUTCDay();
+  const domingoBase = somarDias(dataInicial, -diaSemanaBase);
+
+  const datas: string[] = [];
+  for (let semana = 0; datas.length < maxOcorrencias && semana < 300; semana++) {
+    for (const d of [...diasSemana].sort((a, b) => a - b)) {
+      const candidato = somarDias(domingoBase, semana * 7 * intervaloSemanas + d);
+      if (candidato < dataInicial) continue;
+      if (dataLimite && candidato > dataLimite) return datas;
+      datas.push(candidato);
+      if (datas.length >= maxOcorrencias) break;
+    }
+  }
+  return datas;
+}
+
 function primeiroDiaDoMes(ano: number, mes: number) {
   return new Date(ano, mes, 1);
 }
@@ -91,14 +127,16 @@ export default function CalendarioView({
     data: string;
     horario: string;
     meetLink: string;
-    repetirSemanas: number;
+    diasSemana: number[];
+    intervaloSemanas: number;
+    limiteQuantidade: number | null;
   }): Promise<string | null> {
-    const total = Math.max(1, fields.repetirSemanas);
-    const linhas = Array.from({ length: total }, (_, i) => ({
+    const datas = gerarOcorrencias(fields.data, fields.diasSemana, fields.intervaloSemanas, fields.limiteQuantidade);
+    const linhas = datas.map((data) => ({
       aluno_id: fields.alunoId,
       turma_id: null,
       titulo: fields.titulo,
-      data: somarDias(fields.data, i * 7),
+      data,
       horario: fields.horario || null,
       meet_link: fields.meetLink.trim() || null,
       status: "planejada" as const,
@@ -443,38 +481,50 @@ function NovaAulaDia({
     data: string;
     horario: string;
     meetLink: string;
-    repetirSemanas: number;
+    diasSemana: number[];
+    intervaloSemanas: number;
+    limiteQuantidade: number | null;
   }) => Promise<string | null>;
   onClose: () => void;
 }) {
+  const diaSemanaInicial = new Date(`${data}T00:00:00Z`).getUTCDay();
+
   const [alunoId, setAlunoId] = useState("");
   const [titulo, setTitulo] = useState("");
   const [horario, setHorario] = useState("");
   const [meetLink, setMeetLink] = useState("");
   const [recorrente, setRecorrente] = useState(false);
-  const [semanas, setSemanas] = useState("8");
+  const [intervaloSemanas, setIntervaloSemanas] = useState("1");
+  const [diasSemana, setDiasSemana] = useState<number[]>([diaSemanaInicial]);
+  const [limitarQuantidade, setLimitarQuantidade] = useState(false);
+  const [quantidadeLimite, setQuantidadeLimite] = useState("12");
   const [saving, setSaving] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  function alternarDia(dia: number) {
+    setDiasSemana((prev) => (prev.includes(dia) ? prev.filter((d) => d !== dia) : [...prev, dia]));
+  }
 
   async function handleAdd() {
     if (!alunoId || !titulo.trim()) return;
     setSaving(true);
     setErro(null);
-    const repetirSemanas = recorrente ? Math.max(1, Number(semanas) || 1) : 1;
     const resultado = await onAdd({
       alunoId,
       titulo: titulo.trim(),
       data,
       horario,
       meetLink,
-      repetirSemanas,
+      diasSemana: recorrente ? diasSemana : [],
+      intervaloSemanas: Math.max(1, Number(intervaloSemanas) || 1),
+      limiteQuantidade: recorrente && limitarQuantidade ? Math.max(1, Number(quantidadeLimite) || 1) : null,
     });
     setSaving(false);
     if (resultado) setErro(resultado);
   }
 
   return (
-    <ModalShell onClose={onClose}>
+    <ModalShell onClose={onClose} wide>
       <div className="mb-3 flex items-center justify-between">
         <span className="font-display text-[15px] font-semibold text-ink">Nova aula · {data}</span>
         <button onClick={onClose} title="Fechar" className="text-muted hover:text-ink">
@@ -522,20 +572,68 @@ function NovaAulaDia({
           onChange={(e) => setRecorrente(e.target.checked)}
           className="h-4 w-4"
         />
-        Repetir toda semana nesse mesmo dia e horário
+        Repetir
       </label>
       {recorrente && (
-        <div className="mb-3">
-          <label className={labelClass}>Por quantas semanas (incluindo essa)</label>
-          <input
-            type="number"
-            min={1}
-            max={52}
-            value={semanas}
-            onChange={(e) => setSemanas(e.target.value)}
-            className={inputClass}
-            style={{ width: "auto" }}
-          />
+        <div className="mb-3 rounded-lg border border-border bg-surface-2 p-3">
+          <div className="mb-3 flex items-center gap-2 text-sm text-ink">
+            <span>Repetir a cada</span>
+            <input
+              type="number"
+              min={1}
+              max={8}
+              value={intervaloSemanas}
+              onChange={(e) => setIntervaloSemanas(e.target.value)}
+              className={inputClass}
+              style={{ width: "64px" }}
+            />
+            <span>semana(s)</span>
+          </div>
+
+          <div className="mb-3">
+            <label className={labelClass}>Nos dias</label>
+            <div className="flex flex-wrap gap-1.5">
+              {DIAS_SEMANA.map((label, i) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => alternarDia(i)}
+                  className={`h-8 w-10 rounded-lg border text-xs font-medium uppercase transition ${
+                    diasSemana.includes(i)
+                      ? "border-brand bg-brand text-brand-ink"
+                      : "border-border bg-surface text-muted hover:border-brand hover:text-ink"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <label className="mb-1 flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={limitarQuantidade}
+              onChange={(e) => setLimitarQuantidade(e.target.checked)}
+              className="h-4 w-4"
+            />
+            Limitar quantidade de aulas
+          </label>
+          {limitarQuantidade ? (
+            <input
+              type="number"
+              min={1}
+              max={120}
+              value={quantidadeLimite}
+              onChange={(e) => setQuantidadeLimite(e.target.value)}
+              className={inputClass}
+              style={{ width: "64px" }}
+            />
+          ) : (
+            <p className="text-xs text-muted">
+              Sem limite, cria as aulas dos próximos 6 meses - repita o cadastro depois pra continuar.
+            </p>
+          )}
         </div>
       )}
 
