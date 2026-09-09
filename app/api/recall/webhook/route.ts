@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { Webhook } from "standardwebhooks";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { extractBotId, extractTranscriptId, getTranscriptText } from "@/lib/recall";
+import { deleteBotMedia, extractBotId, extractTranscriptId, getTranscriptText } from "@/lib/recall";
 import { summarize, extractVocabulario, extractTarefas, type TarefaGerada } from "@/lib/resumo-ia";
 
 export async function POST(request: NextRequest) {
@@ -169,6 +169,14 @@ async function handlePost(request: NextRequest) {
     if (errosError) {
       console.error("Falha ao salvar erros_aula", errosError);
     }
+  }
+
+  try {
+    await deleteBotMedia(botId);
+  } catch (err) {
+    // Não falha o webhook por isso - a análise já foi salva, isso é só
+    // limpeza de custo/armazenamento no lado do Recall.ai.
+    console.error("Falha ao apagar mídia do bot no Recall.ai", err);
   }
 
   return NextResponse.json({ ok: true });

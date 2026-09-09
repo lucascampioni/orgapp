@@ -56,7 +56,7 @@ Se o seu projeto Supabase tiver "Confirm email" ativado (Authentication → Prov
 
 ### Gravação e resumo de aulas com IA (opcional)
 
-Uma aula com um link do Google Meet cadastrado pode ter um bot (via [Recall.ai](https://recall.ai)) entrando pra gravar/transcrever, e a transcrição vira automaticamente resumo, tópicos abordados, erros do aluno (com correção e explicação), pontos positivos/a melhorar, uma sugestão pra próxima aula, tarefas de acompanhamento e vocabulário novo (tudo via API da Anthropic) na própria aula e no perfil do aluno. Isso é opcional — sem essas variáveis o resto do app funciona normalmente, só o botão "Iniciar gravação com IA" não funciona.
+Uma aula com um link do Google Meet cadastrado pode ter um bot (via [Recall.ai](https://recall.ai)) entrando pra transcrever, e a transcrição vira automaticamente resumo, tópicos abordados, erros do aluno (com correção e explicação), pontos positivos/a melhorar, uma sugestão pra próxima aula, tarefas de acompanhamento e vocabulário novo (tudo via API da Anthropic) na própria aula e no perfil do aluno. O bot não grava vídeo da reunião (`video_mixed_mp4: null` em `lib/recall.ts`, caso de uso oficial "Transcribing without recording" da API do Recall.ai) - só precisa do áudio pra gerar a transcrição - e a mídia é apagada (`delete_media`) assim que o resumo é gerado, como camada extra de segurança de custo/armazenamento. Isso é opcional — sem essas variáveis o resto do app funciona normalmente, só o botão "Iniciar gravação com IA" não funciona.
 
 Variáveis necessárias (`.env.local` e nas env vars da Vercel):
 

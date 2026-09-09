@@ -1,6 +1,6 @@
 /**
- * Integração com a API do Recall.ai (bot que entra numa reunião do Meet,
- * grava e transcreve).
+ * Integração com a API do Recall.ai (bot que entra numa reunião do Meet e
+ * transcreve - sem gravar vídeo, ver video_mixed_mp4 em createBot()).
  *
  * IMPORTANTE: este arquivo foi escrito a partir do conhecimento geral da
  * API do Recall.ai, sem acesso à documentação ao vivo no momento em que
@@ -51,7 +51,13 @@ export async function createBot(meetingUrl: string, webhookUrl: string, joinAt?:
       // erro 400 anterior; "gladia_v2_streaming" é a chave certa (não
       // "gladia_v2"). code_switching liga porque a aula mistura português e
       // inglês na mesma fala.
+      //
+      // video_mixed_mp4: null é o jeito documentado (API 1.11, caso de uso
+      // "Transcribing without recording") de o bot NÃO gravar vídeo da
+      // reunião - sem isso o Recall.ai grava por padrão mesmo só pedindo
+      // transcript. A gente só quer o texto, nunca o vídeo.
       recording_config: {
+        video_mixed_mp4: null,
         transcript: {
           provider: {
             gladia_v2_streaming: {
@@ -73,6 +79,24 @@ export async function createBot(meetingUrl: string, webhookUrl: string, joinAt?:
 
   const data = (await res.json()) as { id: string };
   return data.id;
+}
+
+/**
+ * Apaga a mídia (áudio) da gravação depois que já extraímos o transcript e
+ * a análise de IA - rede de segurança de custo/armazenamento pro caso de
+ * algum provedor de transcrição ainda persistir mídia bruta, mesmo com
+ * video_mixed_mp4: null em createBot(). Não apaga o transcript em si
+ * (recurso separado da mídia), então não afeta reprocessar().
+ */
+export async function deleteBotMedia(botId: string): Promise<void> {
+  const res = await fetch(`${RECALL_API_BASE}/bot/${botId}/delete_media/`, {
+    method: "POST",
+    headers: authHeaders(),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Falha ao apagar mídia do bot no Recall.ai (${res.status}): ${await res.text()}`);
+  }
 }
 
 /** Extrai um bot id de formatos plausíveis de payload de webhook. */
