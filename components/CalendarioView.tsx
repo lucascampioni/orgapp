@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Aluno, Aula, ErroAula, TarefaAula, Vocabulario } from "@/lib/types";
 import AulaModal from "@/components/AulaModal";
-import { ModalShell, inputClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui";
+import { ModalShell, inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui";
 
 const DIAS_SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 const MESES = [
@@ -14,6 +14,15 @@ const MESES = [
 
 function hojeStr() {
   return new Date().toISOString().slice(0, 10);
+}
+
+/** Soma dias a uma data "YYYY-MM-DD" sem risco de fuso horário (usa UTC
+ * o tempo todo, já que a data em si não tem componente de hora). */
+function somarDias(iso: string, dias: number): string {
+  const [ano, mes, dia] = iso.split("-").map(Number);
+  const d = new Date(Date.UTC(ano, mes - 1, dia));
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
 }
 
 function primeiroDiaDoMes(ano: number, mes: number) {
@@ -76,25 +85,57 @@ export default function CalendarioView({
     return map;
   }, [aulas]);
 
-  async function addAula(alunoId: string, titulo: string, data: string, horario: string) {
-    const { data: row, error } = await supabase
-      .from("aulas")
-      .insert({
-        aluno_id: alunoId,
-        turma_id: null,
-        titulo,
-        data,
-        horario: horario || null,
-        status: "planejada",
-      })
-      .select()
-      .single();
-    if (error || !row) {
+  async function addAula(fields: {
+    alunoId: string;
+    titulo: string;
+    data: string;
+    horario: string;
+    meetLink: string;
+    repetirSemanas: number;
+  }): Promise<string | null> {
+    const total = Math.max(1, fields.repetirSemanas);
+    const linhas = Array.from({ length: total }, (_, i) => ({
+      aluno_id: fields.alunoId,
+      turma_id: null,
+      titulo: fields.titulo,
+      data: somarDias(fields.data, i * 7),
+      horario: fields.horario || null,
+      meet_link: fields.meetLink.trim() || null,
+      status: "planejada" as const,
+    }));
+
+    const { data: rows, error } = await supabase.from("aulas").insert(linhas).select();
+    if (error || !rows) {
       console.error("Falha ao adicionar aula", error);
-      return;
+      return error?.message ?? "Falha ao criar aula";
     }
-    setAulas((prev) => [...prev, row as Aula]);
+    const novasAulas = rows as Aula[];
+    setAulas((prev) => [...prev, ...novasAulas]);
     setDiaNovaAula(null);
+
+    // Já tem link+data+horário desde a criação - agenda o bot pra entrar
+    // sozinho em cada ocorrência, sem precisar reabrir aula por aula.
+    if (fields.meetLink.trim()) {
+      const comBot = await Promise.all(
+        novasAulas.map(async (aula) => {
+          const res = await fetch("/api/recall/agendar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ aulaId: aula.id }),
+          });
+          const body = (await res.json()) as { botId?: string };
+          return body.botId ? { id: aula.id, botId: body.botId } : null;
+        }),
+      );
+      const atualizacoes = new Map(comBot.filter((c) => c !== null).map((c) => [c!.id, c!.botId]));
+      if (atualizacoes.size > 0) {
+        setAulas((prev) =>
+          prev.map((a) => (atualizacoes.has(a.id) ? { ...a, recall_bot_id: atualizacoes.get(a.id)! } : a)),
+        );
+      }
+    }
+
+    return null;
   }
 
   async function updateAula(id: string, fields: Partial<Aula>) {
@@ -396,19 +437,40 @@ function NovaAulaDia({
 }: {
   data: string;
   alunos: Aluno[];
-  onAdd: (alunoId: string, titulo: string, data: string, horario: string) => Promise<void>;
+  onAdd: (fields: {
+    alunoId: string;
+    titulo: string;
+    data: string;
+    horario: string;
+    meetLink: string;
+    repetirSemanas: number;
+  }) => Promise<string | null>;
   onClose: () => void;
 }) {
   const [alunoId, setAlunoId] = useState("");
   const [titulo, setTitulo] = useState("");
   const [horario, setHorario] = useState("");
+  const [meetLink, setMeetLink] = useState("");
+  const [recorrente, setRecorrente] = useState(false);
+  const [semanas, setSemanas] = useState("8");
   const [saving, setSaving] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   async function handleAdd() {
     if (!alunoId || !titulo.trim()) return;
     setSaving(true);
-    await onAdd(alunoId, titulo.trim(), data, horario);
+    setErro(null);
+    const repetirSemanas = recorrente ? Math.max(1, Number(semanas) || 1) : 1;
+    const resultado = await onAdd({
+      alunoId,
+      titulo: titulo.trim(),
+      data,
+      horario,
+      meetLink,
+      repetirSemanas,
+    });
     setSaving(false);
+    if (resultado) setErro(resultado);
   }
 
   return (
@@ -437,12 +499,48 @@ function NovaAulaDia({
         placeholder="Título da aula..."
         className={`mb-2 ${inputClass}`}
       />
-      <input
-        type="time"
-        value={horario}
-        onChange={(e) => setHorario(e.target.value)}
-        className={`mb-3 ${inputClass}`}
-      />
+      <div className="mb-2 flex gap-2">
+        <input
+          type="time"
+          value={horario}
+          onChange={(e) => setHorario(e.target.value)}
+          className={inputClass}
+          style={{ width: "auto" }}
+        />
+        <input
+          value={meetLink}
+          onChange={(e) => setMeetLink(e.target.value)}
+          placeholder="Link da chamada (opcional)"
+          className={`flex-1 ${inputClass}`}
+        />
+      </div>
+
+      <label className="mb-3 flex items-center gap-2 text-sm text-ink">
+        <input
+          type="checkbox"
+          checked={recorrente}
+          onChange={(e) => setRecorrente(e.target.checked)}
+          className="h-4 w-4"
+        />
+        Repetir toda semana nesse mesmo dia e horário
+      </label>
+      {recorrente && (
+        <div className="mb-3">
+          <label className={labelClass}>Por quantas semanas (incluindo essa)</label>
+          <input
+            type="number"
+            min={1}
+            max={52}
+            value={semanas}
+            onChange={(e) => setSemanas(e.target.value)}
+            className={inputClass}
+            style={{ width: "auto" }}
+          />
+        </div>
+      )}
+
+      {erro && <p className="mb-3 text-xs text-danger">{erro}</p>}
+
       <div className="flex justify-end gap-2">
         <button onClick={onClose} className={secondaryButtonClass}>
           Cancelar
