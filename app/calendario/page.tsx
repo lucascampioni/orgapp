@@ -19,23 +19,14 @@ export default async function CalendarioPage() {
     redirect("/");
   }
 
-  const [
-    { data: alunos },
-    { data: aulas },
-    { data: tarefasAula },
-    { data: vocabulario },
-    { data: erros },
-    { data: googleConexao },
-    { data: googleVinculos },
-  ] = await Promise.all([
-    supabase.from("alunos").select("*").order("nome", { ascending: true }),
-    supabase.from("aulas").select("*"),
-    supabase.from("tarefas_aula").select("*"),
-    supabase.from("vocabulario").select("*"),
-    supabase.from("erros_aula").select("*"),
-    supabase.from("google_conexoes").select("google_email").maybeSingle(),
-    supabase.from("google_vinculos").select("*"),
-  ]);
+  const [{ data: alunos }, { data: aulas }, { data: tarefasAula }, { data: vocabulario }, { data: erros }] =
+    await Promise.all([
+      supabase.from("alunos").select("*").order("nome", { ascending: true }),
+      supabase.from("aulas").select("*"),
+      supabase.from("tarefas_aula").select("*"),
+      supabase.from("vocabulario").select("*"),
+      supabase.from("erros_aula").select("*"),
+    ]);
 
   return (
     <ProfessorShell userEmail={user.email ?? ""}>
@@ -45,9 +36,6 @@ export default async function CalendarioPage() {
         initialTarefasAula={(tarefasAula as TarefaAula[]) ?? []}
         initialVocabulario={(vocabulario as Vocabulario[]) ?? []}
         initialErros={(erros as ErroAula[]) ?? []}
-        googleConectado={Boolean(googleConexao)}
-        googleEmail={googleConexao?.google_email ?? null}
-        googleVinculos={googleVinculos ?? []}
       />
     </ProfessorShell>
   );

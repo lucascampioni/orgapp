@@ -4,15 +4,7 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { Aluno, Aula, ErroAula, TarefaAula, Vocabulario } from "@/lib/types";
 import AulaModal from "@/components/AulaModal";
-import GoogleCalendarPainel from "@/components/GoogleCalendarPainel";
-import { inputClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui";
-
-type GoogleVinculo = {
-  id: string;
-  aluno_id: string;
-  google_recurring_event_id: string;
-  titulo: string | null;
-};
+import { ModalShell, inputClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui";
 
 const DIAS_SEMANA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 const MESES = [
@@ -50,18 +42,12 @@ export default function CalendarioView({
   initialTarefasAula,
   initialVocabulario,
   initialErros,
-  googleConectado,
-  googleEmail,
-  googleVinculos,
 }: {
   initialAulas: Aula[];
   alunos: Aluno[];
   initialTarefasAula: TarefaAula[];
   initialVocabulario: Vocabulario[];
   initialErros: ErroAula[];
-  googleConectado: boolean;
-  googleEmail: string | null;
-  googleVinculos: GoogleVinculo[];
 }) {
   const supabase = useMemo(() => createClient(), []);
   const hoje = new Date();
@@ -90,15 +76,17 @@ export default function CalendarioView({
     return map;
   }, [aulas]);
 
-  async function refetchAulas() {
-    const { data } = await supabase.from("aulas").select("*");
-    if (data) setAulas(data as Aula[]);
-  }
-
-  async function addAula(alunoId: string, titulo: string, data: string) {
+  async function addAula(alunoId: string, titulo: string, data: string, horario: string) {
     const { data: row, error } = await supabase
       .from("aulas")
-      .insert({ aluno_id: alunoId, turma_id: null, titulo, data, status: "planejada" })
+      .insert({
+        aluno_id: alunoId,
+        turma_id: null,
+        titulo,
+        data,
+        horario: horario || null,
+        status: "planejada",
+      })
       .select()
       .single();
     if (error || !row) {
@@ -229,6 +217,14 @@ export default function CalendarioView({
   const grade = gerarGrade(ano, mes);
   const openAula = aulas.find((a) => a.id === openAulaId) ?? null;
   const hojeISO = hojeStr();
+  const proximasAulas = useMemo(
+    () =>
+      aulas
+        .filter((a) => a.status === "planejada" && a.data && a.data >= hojeISO)
+        .sort((a, b) => (a.data ?? "").localeCompare(b.data ?? "") || (a.horario ?? "").localeCompare(b.horario ?? ""))
+        .slice(0, 5),
+    [aulas, hojeISO],
+  );
 
   function mesAnterior() {
     if (mes === 0) {
@@ -265,17 +261,9 @@ export default function CalendarioView({
         </div>
       </div>
 
-      <GoogleCalendarPainel
-        conectado={googleConectado}
-        googleEmail={googleEmail}
-        vinculos={googleVinculos}
-        alunos={alunos}
-        onAulasCriadas={refetchAulas}
-      />
-
       <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-border bg-border">
         {DIAS_SEMANA.map((d) => (
-          <div key={d} className="bg-surface-2 p-2 text-center text-[11px] font-medium uppercase text-muted">
+          <div key={d} className="bg-surface-2 p-2 text-center text-xs font-medium uppercase text-muted">
             {d}
           </div>
         ))}
@@ -288,7 +276,7 @@ export default function CalendarioView({
           return (
             <div
               key={iso}
-              className={`min-h-[92px] bg-surface p-1.5 ${doMes ? "" : "opacity-40"}`}
+              className={`min-h-[116px] bg-surface p-1.5 ${doMes ? "" : "opacity-40"}`}
             >
               <div className="mb-1 flex items-center justify-between">
                 <span
@@ -303,7 +291,7 @@ export default function CalendarioView({
                 <button
                   onClick={() => setDiaNovaAula(iso)}
                   title="Nova aula"
-                  className="text-[11px] text-muted hover:text-brand"
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-brand"
                 >
                   +
                 </button>
@@ -315,7 +303,7 @@ export default function CalendarioView({
                     <button
                       key={a.id}
                       onClick={() => setOpenAulaId(a.id)}
-                      className={`truncate rounded px-1.5 py-0.5 text-left text-[11px] transition ${
+                      className={`truncate rounded px-2 py-1 text-left text-xs transition ${
                         a.status === "dada"
                           ? "bg-success/20 text-success"
                           : "bg-brand/15 text-brand"
@@ -332,6 +320,39 @@ export default function CalendarioView({
           );
         })}
       </div>
+
+      <section className="mt-6">
+        <h2 className="mb-2 font-display text-sm font-semibold text-ink">Hoje e próximos dias</h2>
+        <div className="flex flex-col gap-2">
+          {proximasAulas.length === 0 && (
+            <div className="text-sm text-muted">Nenhuma aula agendada.</div>
+          )}
+          {proximasAulas.map((a) => {
+            const aluno = a.aluno_id ? alunoPorId.get(a.aluno_id) : null;
+            return (
+              <button
+                key={a.id}
+                onClick={() => setOpenAulaId(a.id)}
+                className="flex items-center justify-between rounded-lg border border-border bg-surface p-3 text-left transition hover:border-brand"
+              >
+                <div>
+                  <div className="text-sm text-ink">{aluno?.nome ?? "Sem aluno"}</div>
+                  <div className="text-xs text-muted">
+                    {a.titulo}
+                    {a.data ? ` · ${a.data}` : ""}
+                    {a.horario ? ` · ${a.horario}` : ""}
+                  </div>
+                </div>
+                {aluno?.nivel_cefr && (
+                  <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase text-muted">
+                    {aluno.nivel_cefr}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {diaNovaAula && (
         <NovaAulaDia
@@ -375,62 +396,61 @@ function NovaAulaDia({
 }: {
   data: string;
   alunos: Aluno[];
-  onAdd: (alunoId: string, titulo: string, data: string) => Promise<void>;
+  onAdd: (alunoId: string, titulo: string, data: string, horario: string) => Promise<void>;
   onClose: () => void;
 }) {
   const [alunoId, setAlunoId] = useState("");
   const [titulo, setTitulo] = useState("");
+  const [horario, setHorario] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function handleAdd() {
     if (!alunoId || !titulo.trim()) return;
     setSaving(true);
-    await onAdd(alunoId, titulo.trim(), data);
+    await onAdd(alunoId, titulo.trim(), data, horario);
     setSaving(false);
   }
 
   return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-2xl border border-border bg-surface p-5 shadow-2xl shadow-black/40"
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <span className="font-display text-[15px] font-semibold text-ink">Nova aula · {data}</span>
-          <button onClick={onClose} className="text-muted hover:text-ink">
-            ✕
-          </button>
-        </div>
-        <select
-          value={alunoId}
-          onChange={(e) => setAlunoId(e.target.value)}
-          className={`mb-2 ${inputClass}`}
-        >
-          <option value="">Selecione o aluno</option>
-          {alunos.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.nome}
-            </option>
-          ))}
-        </select>
-        <input
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          placeholder="Título da aula..."
-          className={`mb-3 ${inputClass}`}
-        />
-        <div className="flex justify-end gap-2">
-          <button onClick={onClose} className={secondaryButtonClass}>
-            Cancelar
-          </button>
-          <button onClick={handleAdd} disabled={saving || !alunoId} className={primaryButtonClass}>
-            {saving ? "Salvando..." : "Criar aula"}
-          </button>
-        </div>
+    <ModalShell onClose={onClose}>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="font-display text-[15px] font-semibold text-ink">Nova aula · {data}</span>
+        <button onClick={onClose} title="Fechar" className="text-muted hover:text-ink">
+          ✕
+        </button>
       </div>
-    </div>
+      <select
+        value={alunoId}
+        onChange={(e) => setAlunoId(e.target.value)}
+        className={`mb-2 ${inputClass}`}
+      >
+        <option value="">Selecione o aluno</option>
+        {alunos.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.nome}
+          </option>
+        ))}
+      </select>
+      <input
+        value={titulo}
+        onChange={(e) => setTitulo(e.target.value)}
+        placeholder="Título da aula..."
+        className={`mb-2 ${inputClass}`}
+      />
+      <input
+        type="time"
+        value={horario}
+        onChange={(e) => setHorario(e.target.value)}
+        className={`mb-3 ${inputClass}`}
+      />
+      <div className="flex justify-end gap-2">
+        <button onClick={onClose} className={secondaryButtonClass}>
+          Cancelar
+        </button>
+        <button onClick={handleAdd} disabled={saving || !alunoId} className={primaryButtonClass}>
+          {saving ? "Salvando..." : "Criar aula"}
+        </button>
+      </div>
+    </ModalShell>
   );
 }
