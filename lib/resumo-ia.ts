@@ -151,7 +151,7 @@ export async function extractVocabulario(transcript: string): Promise<Vocabulari
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
+    model: "claude-sonnet-5",
     max_tokens: 1024,
     tools: [VOCABULARIO_TOOL],
     tool_choice: { type: "tool", name: VOCABULARIO_TOOL.name },
@@ -223,7 +223,7 @@ export async function extractTarefas(transcript: string): Promise<TarefaGerada[]
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5",
+    model: "claude-sonnet-5",
     max_tokens: 1536,
     tools: [TAREFAS_TOOL],
     tool_choice: { type: "tool", name: TAREFAS_TOOL.name },
