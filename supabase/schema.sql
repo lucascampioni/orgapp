@@ -742,9 +742,12 @@ create policy "erros_aula_select_aluno" on public.erros_aula for select to authe
 -- aulas agora são criadas só manualmente (ver /calendario).
 -- ---------------------------------------------------------------------
 
-drop policy if exists "google_conexoes_all_own" on public.google_conexoes;
-drop policy if exists "google_vinculos_all_own" on public.google_vinculos;
-
+-- Nada de "drop policy if exists ... on <tabela>" aqui: diferente de drop
+-- table, essa variante falha se a tabela já não existir mesmo com
+-- "if exists" (ele só protege contra a policy não existir, não a tabela) -
+-- e, rodando o schema pela segunda vez num banco onde esse bloco já rodou
+-- antes, a tabela já foi removida. "drop table ... cascade" já derruba as
+-- policies dela sozinho, então não precisa do drop policy separado.
 drop table if exists public.google_vinculos cascade;
 drop table if exists public.google_conexoes cascade;
 
