@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -14,6 +15,49 @@ type Escolha = "escolha" | "professora" | "aluno";
 
 const cardClass =
   "w-full rounded-xl border border-border bg-surface-2 p-4 text-left transition hover:border-brand";
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  autoComplete,
+  bloquearColar = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete: string;
+  bloquearColar?: boolean;
+}) {
+  const [visivel, setVisivel] = useState(false);
+  return (
+    <div className="mb-4">
+      <label className={labelClass}>{label}</label>
+      <div className="relative">
+        <input
+          type={visivel ? "text" : "password"}
+          required
+          minLength={6}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onPaste={bloquearColar ? (e) => e.preventDefault() : undefined}
+          className={`${inputClass} pr-10`}
+          placeholder="••••••••"
+        />
+        <button
+          type="button"
+          onClick={() => setVisivel((v) => !v)}
+          tabIndex={-1}
+          title={visivel ? "Esconder senha" : "Mostrar senha"}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted transition hover:text-ink"
+        >
+          {visivel ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function CadastroForm() {
   const [tipo, setTipo] = useState<Escolha>("escolha");
@@ -65,15 +109,27 @@ function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
   const [dataNascimento, setDataNascimento] = useState("");
   const [sexo, setSexo] = useState<Sexo | "">("");
   const [email, setEmail] = useState("");
+  const [confirmarEmail, setConfirmarEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmarPassword, setConfirmarPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [aguardandoConfirmacao, setAguardandoConfirmacao] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    if (email.trim().toLowerCase() !== confirmarEmail.trim().toLowerCase()) {
+      setError("Os e-mails digitados não são iguais.");
+      return;
+    }
+    if (password !== confirmarPassword) {
+      setError("As senhas digitadas não são iguais.");
+      return;
+    }
+
+    setLoading(true);
 
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
@@ -165,16 +221,25 @@ function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
         placeholder="voce@email.com"
       />
 
-      <label className="mb-1 block text-xs font-medium text-muted">Senha</label>
+      <label className="mb-1 block text-xs font-medium text-muted">Confirmar e-mail</label>
       <input
-        type="password"
+        type="email"
         required
-        minLength={6}
-        autoComplete="new-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        autoComplete="email"
+        value={confirmarEmail}
+        onChange={(e) => setConfirmarEmail(e.target.value)}
+        onPaste={(e) => e.preventDefault()}
         className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
-        placeholder="••••••••"
+        placeholder="voce@email.com"
+      />
+
+      <PasswordField label="Senha" value={password} onChange={setPassword} autoComplete="new-password" />
+      <PasswordField
+        label="Confirmar senha"
+        value={confirmarPassword}
+        onChange={setConfirmarPassword}
+        autoComplete="new-password"
+        bloquearColar
       />
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
@@ -207,15 +272,27 @@ function ProfessoraSignupForm({ onVoltar }: { onVoltar: () => void }) {
   const [dataNascimento, setDataNascimento] = useState("");
   const [sexo, setSexo] = useState<Sexo | "">("");
   const [email, setEmail] = useState("");
+  const [confirmarEmail, setConfirmarEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmarPassword, setConfirmarPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [aguardandoConfirmacao, setAguardandoConfirmacao] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    if (email.trim().toLowerCase() !== confirmarEmail.trim().toLowerCase()) {
+      setError("Os e-mails digitados não são iguais.");
+      return;
+    }
+    if (password !== confirmarPassword) {
+      setError("As senhas digitadas não são iguais.");
+      return;
+    }
+
+    setLoading(true);
 
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
@@ -317,16 +394,25 @@ function ProfessoraSignupForm({ onVoltar }: { onVoltar: () => void }) {
         placeholder="voce@email.com"
       />
 
-      <label className={labelClass}>Senha</label>
+      <label className={labelClass}>Confirmar e-mail</label>
       <input
-        type="password"
+        type="email"
         required
-        minLength={6}
-        autoComplete="new-password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        autoComplete="email"
+        value={confirmarEmail}
+        onChange={(e) => setConfirmarEmail(e.target.value)}
+        onPaste={(e) => e.preventDefault()}
         className={`mb-4 ${inputClass}`}
-        placeholder="••••••••"
+        placeholder="voce@email.com"
+      />
+
+      <PasswordField label="Senha" value={password} onChange={setPassword} autoComplete="new-password" />
+      <PasswordField
+        label="Confirmar senha"
+        value={confirmarPassword}
+        onChange={setConfirmarPassword}
+        autoComplete="new-password"
+        bloquearColar
       />
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
