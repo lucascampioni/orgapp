@@ -1,9 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-inter);
 
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -22,48 +21,56 @@
   --color-danger: var(--danger);
   --color-teal: var(--teal);
   --color-violet: var(--violet);
+  --color-accent-amber: var(--accent-amber);
 }
 
-/* Tema claro (padrão). */
+/* Tema claro (padrão) - paleta neutra fria (slate), superfícies brancas e
+   azul-índigo institucional como cor primária (era âmbar; o âmbar do sol
+   da logo virou --accent-amber, um acento pontual, não mais a cor base
+   usada em botões/links/estado ativo em todo o app). */
 :root {
-  --bg: #faf8f4;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-2: #f3f0ea;
-  --surface-3: #eae5dc;
-  --border: #e2ddd3;
-  --ink: #211c13;
-  --muted: #6b6458;
-  --faint: #9c9585;
+  --surface-2: #f1f5f9;
+  --surface-3: #e2e8f0;
+  --border: #e2e8f0;
+  --ink: #0f172a;
+  --muted: #64748b;
+  --faint: #94a3b8;
 
-  --brand: #f2a93b;
-  --brand-strong: #d98f1e;
-  --brand-ink: #211705;
+  --brand: #4f46e5;
+  --brand-strong: #4338ca;
+  --brand-ink: #ffffff;
 
-  --success: #1f9d6c;
-  --danger: #d9463f;
-  --teal: #1f9e8c;
-  --violet: #8a5cc4;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --teal: #0891b2;
+  --violet: #7c3aed;
+
+  --accent-amber: #f2a93b;
 }
 
 /* Tema escuro, ligado via data-theme="dark" no <html> (components/ThemeToggle.tsx). */
 :root[data-theme="dark"] {
-  --bg: #14161d;
-  --surface: #1c1f29;
-  --surface-2: #262a36;
-  --surface-3: #2e3341;
-  --border: #343a4a;
-  --ink: #f4f1ea;
-  --muted: #a29cb0;
-  --faint: #6f6a7b;
+  --bg: #020617;
+  --surface: #0f172a;
+  --surface-2: #1e293b;
+  --surface-3: #2a3749;
+  --border: #243043;
+  --ink: #f1f5f9;
+  --muted: #94a3b8;
+  --faint: #64748b;
 
-  --brand: #f2a93b;
-  --brand-strong: #ffbf5c;
-  --brand-ink: #211705;
+  --brand: #6366f1;
+  --brand-strong: #818cf8;
+  --brand-ink: #ffffff;
 
-  --success: #34c795;
-  --danger: #ff7a7a;
-  --teal: #45c4b0;
-  --violet: #b98ce8;
+  --success: #22c55e;
+  --danger: #f87171;
+  --teal: #22d3ee;
+  --violet: #a78bfa;
+
+  --accent-amber: #f2a93b;
 }
 
 html,
@@ -79,4 +86,9 @@ body {
 ::selection {
   background: var(--color-brand);
   color: var(--color-brand-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
 }

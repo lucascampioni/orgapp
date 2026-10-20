@@ -19,17 +19,24 @@ export default async function CalendarioPage() {
     redirect("/");
   }
 
-  const [{ data: alunos }, { data: aulas }, { data: tarefasAula }, { data: vocabulario }, { data: erros }] =
-    await Promise.all([
-      supabase.from("alunos").select("*").order("nome", { ascending: true }),
-      supabase.from("aulas").select("*"),
-      supabase.from("tarefas_aula").select("*"),
-      supabase.from("vocabulario").select("*"),
-      supabase.from("erros_aula").select("*"),
-    ]);
+  const [
+    { data: alunos },
+    { data: aulas },
+    { data: tarefasAula },
+    { data: vocabulario },
+    { data: erros },
+    { data: professor },
+  ] = await Promise.all([
+    supabase.from("alunos").select("*").order("nome", { ascending: true }),
+    supabase.from("aulas").select("*"),
+    supabase.from("tarefas_aula").select("*"),
+    supabase.from("vocabulario").select("*"),
+    supabase.from("erros_aula").select("*"),
+    supabase.from("professores").select("nome").eq("id", user.id).maybeSingle(),
+  ]);
 
   return (
-    <ProfessorShell userEmail={user.email ?? ""}>
+    <ProfessorShell userEmail={user.email ?? ""} professorNome={professor?.nome}>
       <CalendarioView
         initialAulas={(aulas as Aula[]) ?? []}
         alunos={(alunos as Aluno[]) ?? []}

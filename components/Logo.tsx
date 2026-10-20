@@ -18,7 +18,7 @@ export default function Logo({
         aria-hidden="true"
         className="shrink-0"
       >
-        <circle cx="16" cy="16" r="7" fill="var(--color-brand)" />
+        <circle cx="16" cy="16" r="7" fill="var(--color-accent-amber)" />
         {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
           <rect
             key={deg}
@@ -27,7 +27,7 @@ export default function Logo({
             width="2"
             height="5"
             rx="1"
-            fill="var(--color-brand)"
+            fill="var(--color-accent-amber)"
             opacity="0.85"
             transform={`rotate(${deg} 16 16)`}
           />

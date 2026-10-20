@@ -1,6 +1,18 @@
 import Link from "next/link";
-import type { Aluno, AlunoProfessor, Aula, TarefaAula, Vocabulario } from "@/lib/types";
-import { hoje } from "@/components/ui";
+import type { ComponentType } from "react";
+import {
+  CalendarDays,
+  CheckSquare,
+  ChevronRight,
+  Plus,
+  Sparkles,
+  UserPlus,
+  Users,
+  Video,
+  Wallet,
+} from "lucide-react";
+import type { Aluno, AlunoProfessor, Aula, Pagamento, TarefaAula, Vocabulario } from "@/lib/types";
+import { Avatar, hoje } from "@/components/ui";
 
 function saudacao() {
   const hora = Number(
@@ -13,6 +25,22 @@ function saudacao() {
   if (hora < 12) return "Bom dia";
   if (hora < 18) return "Boa tarde";
   return "Boa noite";
+}
+
+function dataPorExtenso() {
+  const texto = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date());
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function diasAtras(dias: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - dias);
+  return d.toISOString().slice(0, 10);
 }
 
 function inicioDaSemana() {
@@ -29,42 +57,136 @@ function fimDaSemana() {
   return d.toISOString().slice(0, 10);
 }
 
-function StatCard({ label, value }: { label: string; value: number | string }) {
+function inicioDoMes() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+}
+
+function mesAbreviado(iso: string) {
+  return new Date(`${iso}T00:00:00`)
+    .toLocaleDateString("pt-BR", { month: "short" })
+    .replace(".", "")
+    .toUpperCase();
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  contexto,
+  href,
+}: {
+  icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+  label: string;
+  value: number | string;
+  contexto?: string | null;
+  href: string;
+}) {
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      <div className="font-display text-2xl font-semibold text-ink">{value}</div>
-      <div className="mt-1 text-xs text-muted">{label}</div>
+    <Link
+      href={href}
+      className="rounded-xl border border-border bg-surface p-4 transition hover:border-brand/40 hover:shadow-sm"
+    >
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand">
+        <Icon size={18} strokeWidth={2} />
+      </div>
+      <div className="text-xs font-medium text-muted">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tracking-tight text-ink">{value}</div>
+      {contexto && <div className="mt-0.5 text-xs text-muted">{contexto}</div>}
+    </Link>
+  );
+}
+
+function DashboardCard({
+  title,
+  verLink,
+  className = "",
+  children,
+}: {
+  title: string;
+  verLink: { href: string; label: string };
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={`overflow-hidden rounded-xl border border-border bg-surface ${className}`}>
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        <Link href={verLink.href} className="text-xs font-medium text-brand hover:underline">
+          {verLink.label}
+        </Link>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyState({
+  icon: Icon,
+  titulo,
+  descricao,
+  acao,
+}: {
+  icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+  titulo: string;
+  descricao: string;
+  acao: { href: string; label: string; icon: ComponentType<{ size?: number; strokeWidth?: number }> };
+}) {
+  const AcaoIcon = acao.icon;
+  return (
+    <div className="flex flex-col items-center px-4 py-10 text-center">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 text-faint">
+        <Icon size={22} strokeWidth={1.75} />
+      </div>
+      <p className="text-sm font-medium text-ink">{titulo}</p>
+      <p className="mt-1 max-w-[220px] text-xs text-muted">{descricao}</p>
+      <Link
+        href={acao.href}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink transition hover:bg-brand-strong"
+      >
+        <AcaoIcon size={14} strokeWidth={2} />
+        {acao.label}
+      </Link>
     </div>
   );
 }
 
 export default function DashboardHome({
-  userEmail,
+  professorNome,
   alunos,
   alunoProfessor,
   aulas,
   tarefasAula,
   vocabulario,
+  pagamentos,
 }: {
-  userEmail: string;
+  professorNome: string | null;
   alunos: Aluno[];
   alunoProfessor: AlunoProfessor[];
   aulas: Aula[];
   tarefasAula: TarefaAula[];
   vocabulario: Vocabulario[];
+  pagamentos: Pagamento[];
 }) {
   const hojeStr = hoje();
-  const nomeExibicao = userEmail.split("@")[0];
+  const primeiroNome = professorNome?.trim().split(/\s+/)[0] || null;
+  const textoSaudacao = primeiroNome ? `${saudacao()}, ${primeiroNome}!` : "Olá!";
 
   const inicioSemana = inicioDaSemana();
   const fimSemana = fimDaSemana();
+  const inicioMes = inicioDoMes();
+
   const aulasEstaSemana = aulas.filter(
     (a) => a.data && a.data >= inicioSemana && a.data <= fimSemana,
   ).length;
-  const aulasRealizadas = aulas.filter((a) => a.status === "dada").length;
+  const aulasHoje = aulas.filter((a) => a.data === hojeStr).length;
   const tarefasPendentes = tarefasAula.filter((t) => !t.concluida).length;
+  const alunosNovosEsteMes = alunos.filter((a) => a.criado_em >= inicioMes).length;
+  const pagamentosEmAberto = pagamentos.filter((p) => !p.pago_em);
+  const pagamentosVencidos = pagamentosEmAberto.filter((p) => p.vencimento < hojeStr).length;
 
   const alunoPorId = new Map(alunos.map((a) => [a.id, a]));
+  const vinculoPorAluno = new Map(alunoProfessor.map((v) => [v.aluno_id, v]));
 
   const proximasAulas = aulas
     .filter((a) => a.status === "planejada" && a.data && a.data >= hojeStr)
@@ -78,9 +200,8 @@ export default function DashboardHome({
     .map((v) => alunoPorId.get(v.aluno_id))
     .filter((a): a is Aluno => Boolean(a));
 
-  const seteDiasAtras = new Date();
-  seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
-  const seteDiasAtrasStr = seteDiasAtras.toISOString().slice(0, 10);
+  const seteDiasAtrasStr = diasAtras(7);
+  const quinzeDiasAtrasStr = diasAtras(15);
 
   const insights: string[] = [];
 
@@ -112,14 +233,10 @@ export default function DashboardHome({
     );
   }
 
-  const quinzeDiasAtras = new Date();
-  quinzeDiasAtras.setDate(quinzeDiasAtras.getDate() - 15);
-  const quinzeDiasAtrasStr = quinzeDiasAtras.toISOString().slice(0, 10);
   for (const aluno of alunos) {
     const aulasDoAluno = aulas.filter((a) => a.aluno_id === aluno.id && a.status === "dada" && a.data);
     const semAulaRecente =
-      aulasDoAluno.length === 0 ||
-      aulasDoAluno.every((a) => (a.data ?? "") < quinzeDiasAtrasStr);
+      aulasDoAluno.length === 0 || aulasDoAluno.every((a) => (a.data ?? "") < quinzeDiasAtrasStr);
     const temProxima = aulas.some(
       (a) => a.aluno_id === aluno.id && a.status === "planejada" && a.data && a.data >= hojeStr,
     );
@@ -131,82 +248,162 @@ export default function DashboardHome({
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="font-display text-2xl font-semibold text-ink">
-          {saudacao()}, {nomeExibicao}!
-        </h1>
-        <p className="mt-1 text-sm text-muted">Aqui está o resumo das suas atividades.</p>
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">{textoSaudacao}</h1>
+          <p className="mt-1 text-sm text-muted">{dataPorExtenso()}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/alunos"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-ink transition hover:bg-surface-2"
+          >
+            <UserPlus size={16} strokeWidth={2} />
+            Novo aluno
+          </Link>
+          <Link
+            href="/calendario"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-brand-ink transition hover:bg-brand-strong"
+          >
+            <Plus size={16} strokeWidth={2} />
+            Nova aula
+          </Link>
+        </div>
       </header>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Alunos" value={alunos.length} />
-        <StatCard label="Aulas esta semana" value={aulasEstaSemana} />
-        <StatCard label="Aulas realizadas" value={aulasRealizadas} />
-        <StatCard label="Tarefas pendentes" value={tarefasPendentes} />
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          icon={Users}
+          label="Alunos ativos"
+          value={alunos.length}
+          contexto={alunosNovosEsteMes > 0 ? `+${alunosNovosEsteMes} este mês` : null}
+          href="/alunos"
+        />
+        <StatCard
+          icon={CalendarDays}
+          label="Aulas esta semana"
+          value={aulasEstaSemana}
+          contexto={aulasHoje > 0 ? `${aulasHoje} hoje` : null}
+          href="/calendario"
+        />
+        <StatCard
+          icon={CheckSquare}
+          label="Tarefas pendentes"
+          value={tarefasPendentes}
+          href="/tarefas"
+        />
+        <StatCard
+          icon={Wallet}
+          label="Pagamentos em aberto"
+          value={pagamentosEmAberto.length}
+          contexto={pagamentosVencidos > 0 ? `${pagamentosVencidos} vencido(s)` : null}
+          href="/alunos"
+        />
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section>
-          <h2 className="mb-2 font-display text-sm font-semibold text-ink">Próximas aulas</h2>
-          <div className="flex flex-col gap-2">
-            {proximasAulas.length === 0 && (
-              <div className="text-sm text-muted">Nenhuma aula agendada.</div>
-            )}
-            {proximasAulas.map((a) => {
-              const aluno = a.aluno_id ? alunoPorId.get(a.aluno_id) : null;
-              return (
-                <Link
-                  key={a.id}
-                  href={aluno ? `/alunos/${aluno.id}` : "/alunos"}
-                  className="flex items-center justify-between rounded-lg border border-border bg-surface p-3 transition hover:border-brand"
-                >
-                  <div>
-                    <div className="text-sm text-ink">{aluno?.nome ?? "Sem aluno"}</div>
-                    <div className="text-xs text-muted">
-                      {a.titulo}
-                      {a.data ? ` · ${a.data}` : ""}
-                      {a.horario ? ` · ${a.horario}` : ""}
+      <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <DashboardCard
+          title="Próximas aulas"
+          verLink={{ href: "/calendario", label: "Ver calendário" }}
+          className="lg:col-span-2"
+        >
+          {proximasAulas.length === 0 ? (
+            <EmptyState
+              icon={CalendarDays}
+              titulo="Nenhuma aula agendada"
+              descricao="Que tal marcar a próxima aula com um aluno?"
+              acao={{ href: "/calendario", label: "Agendar aula", icon: Plus }}
+            />
+          ) : (
+            <div className="divide-y divide-border">
+              {proximasAulas.map((a) => {
+                const aluno = a.aluno_id ? alunoPorId.get(a.aluno_id) : null;
+                const vinculo = a.aluno_id ? vinculoPorAluno.get(a.aluno_id) : null;
+                const detalhe = [vinculo?.idioma, a.horario].filter(Boolean).join(" · ");
+                return (
+                  <Link
+                    key={a.id}
+                    href={aluno ? `/alunos/${aluno.id}` : "/alunos"}
+                    className="flex items-center gap-3 px-4 py-3 transition hover:bg-surface-2"
+                  >
+                    <div className="flex w-12 shrink-0 flex-col items-center justify-center rounded-lg bg-surface-2 py-1.5">
+                      <span className="text-[10px] font-medium text-muted">
+                        {a.data ? mesAbreviado(a.data) : "-"}
+                      </span>
+                      <span className="text-base font-semibold leading-none text-ink">
+                        {a.data ? new Date(`${a.data}T00:00:00`).getDate() : "-"}
+                      </span>
                     </div>
-                  </div>
-                  {aluno?.nivel_cefr && (
-                    <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase text-muted">
-                      {aluno.nivel_cefr}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+                    {aluno && <Avatar nome={aluno.nome} size="sm" />}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-ink">
+                        {aluno?.nome ?? "Sem aluno"}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-muted">{detalhe || a.titulo}</div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {aluno?.nivel_cefr && (
+                        <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted">
+                          {aluno.nivel_cefr}
+                        </span>
+                      )}
+                      {a.meet_link && <Video size={14} strokeWidth={2} className="text-teal" />}
+                      {a.recall_bot_id && (
+                        <Sparkles size={14} strokeWidth={2} className="text-violet" />
+                      )}
+                      <ChevronRight size={16} strokeWidth={2} className="text-faint" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </DashboardCard>
 
-        <section>
-          <h2 className="mb-2 font-display text-sm font-semibold text-ink">Alunos recentes</h2>
-          <div className="flex flex-col gap-2">
-            {alunosRecentes.length === 0 && (
-              <div className="text-sm text-muted">Nenhum aluno cadastrado ainda.</div>
-            )}
-            {alunosRecentes.map((aluno) => (
-              <Link
-                key={aluno.id}
-                href={`/alunos/${aluno.id}`}
-                className="flex items-center justify-between rounded-lg border border-border bg-surface p-3 transition hover:border-brand"
-              >
-                <span className="text-sm text-ink">{aluno.nome}</span>
-                {aluno.nivel_cefr && (
-                  <span className="rounded-full border border-border px-2 py-0.5 text-[11px] uppercase text-muted">
-                    {aluno.nivel_cefr}
-                  </span>
-                )}
-              </Link>
-            ))}
-          </div>
-        </section>
+        <DashboardCard title="Alunos recentes" verLink={{ href: "/alunos", label: "Ver todos" }}>
+          {alunosRecentes.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              titulo="Nenhum aluno cadastrado"
+              descricao="Cadastre o primeiro aluno pra começar a organizar as aulas."
+              acao={{ href: "/alunos", label: "Cadastrar aluno", icon: UserPlus }}
+            />
+          ) : (
+            <div className="divide-y divide-border">
+              {alunosRecentes.map((aluno) => {
+                const vinculo = vinculoPorAluno.get(aluno.id);
+                return (
+                  <Link
+                    key={aluno.id}
+                    href={`/alunos/${aluno.id}`}
+                    className="flex items-center gap-3 px-4 py-3 transition hover:bg-surface-2"
+                  >
+                    <Avatar nome={aluno.nome} size="md" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-ink">{aluno.nome}</div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+                        {vinculo?.idioma && <span className="truncate">{vinculo.idioma}</span>}
+                        {aluno.nivel_cefr && (
+                          <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium uppercase">
+                            {aluno.nivel_cefr}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <ChevronRight size={16} strokeWidth={2} className="shrink-0 text-faint" />
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </DashboardCard>
       </div>
 
       {insights.length > 0 && (
-        <section className="rounded-xl border border-brand/40 bg-surface p-4">
-          <h2 className="mb-2 flex items-center gap-1.5 font-display text-sm font-semibold text-ink">
-            ✨ Insights da IA
+        <section className="rounded-xl border border-brand/30 bg-brand/5 p-4">
+          <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-ink">
+            <Sparkles size={16} strokeWidth={2} className="text-brand" />
+            Insights da IA
           </h2>
           <ul className="flex flex-col gap-1.5 text-sm text-muted">
             {insights.map((texto, i) => (

@@ -33,22 +33,24 @@ export default async function AlunoPage({
     redirect("/");
   }
 
-  const [{ data: aluno }, { data: vinculo }, { data: convite }, { data: aulas }] = await Promise.all([
-    supabase.from("alunos").select("*").eq("id", id).single(),
-    supabase.from("aluno_professor").select("*").eq("aluno_id", id).single(),
-    supabase
-      .from("convites")
-      .select("*")
-      .eq("aluno_id", id)
-      .eq("professor_id", user.id)
-      .eq("status", "pendente")
-      .maybeSingle(),
-    supabase
-      .from("aulas")
-      .select("*")
-      .eq("aluno_id", id)
-      .order("data", { ascending: true }),
-  ]);
+  const [{ data: aluno }, { data: vinculo }, { data: convite }, { data: aulas }, { data: professor }] =
+    await Promise.all([
+      supabase.from("alunos").select("*").eq("id", id).single(),
+      supabase.from("aluno_professor").select("*").eq("aluno_id", id).single(),
+      supabase
+        .from("convites")
+        .select("*")
+        .eq("aluno_id", id)
+        .eq("professor_id", user.id)
+        .eq("status", "pendente")
+        .maybeSingle(),
+      supabase
+        .from("aulas")
+        .select("*")
+        .eq("aluno_id", id)
+        .order("data", { ascending: true }),
+      supabase.from("professores").select("nome").eq("id", user.id).maybeSingle(),
+    ]);
 
   if (!aluno) {
     redirect("/alunos");
@@ -83,7 +85,7 @@ export default async function AlunoPage({
     ]);
 
   return (
-    <ProfessorShell userEmail={user.email ?? ""}>
+    <ProfessorShell userEmail={user.email ?? ""} professorNome={professor?.nome}>
       <AlunoPerfil
         aluno={aluno as Aluno}
         vinculo={(vinculo as AlunoProfessor) ?? null}

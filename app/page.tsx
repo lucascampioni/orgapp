@@ -54,24 +54,34 @@ export default async function Home() {
     );
   }
 
-  const [{ data: alunos }, { data: alunoProfessor }, { data: aulas }, { data: tarefasAula }, { data: vocabulario }] =
-    await Promise.all([
-      supabase.from("alunos").select("*"),
-      supabase.from("aluno_professor").select("*"),
-      supabase.from("aulas").select("*"),
-      supabase.from("tarefas_aula").select("*"),
-      supabase.from("vocabulario").select("*"),
-    ]);
+  const [
+    { data: alunos },
+    { data: alunoProfessor },
+    { data: aulas },
+    { data: tarefasAula },
+    { data: vocabulario },
+    { data: pagamentos },
+    { data: professor },
+  ] = await Promise.all([
+    supabase.from("alunos").select("*"),
+    supabase.from("aluno_professor").select("*"),
+    supabase.from("aulas").select("*"),
+    supabase.from("tarefas_aula").select("*"),
+    supabase.from("vocabulario").select("*"),
+    supabase.from("pagamentos").select("*"),
+    supabase.from("professores").select("nome").eq("id", user.id).maybeSingle(),
+  ]);
 
   return (
-    <ProfessorShell userEmail={user.email ?? ""}>
+    <ProfessorShell userEmail={user.email ?? ""} professorNome={professor?.nome}>
       <DashboardHome
-        userEmail={user.email ?? ""}
+        professorNome={professor?.nome ?? null}
         alunos={(alunos as Aluno[]) ?? []}
         alunoProfessor={(alunoProfessor as AlunoProfessor[]) ?? []}
         aulas={(aulas as Aula[]) ?? []}
         tarefasAula={(tarefasAula as TarefaAula[]) ?? []}
         vocabulario={(vocabulario as Vocabulario[]) ?? []}
+        pagamentos={(pagamentos as Pagamento[]) ?? []}
       />
     </ProfessorShell>
   );

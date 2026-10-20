@@ -77,3 +77,48 @@ export function ModalShell({
     </div>
   );
 }
+
+const AVATAR_CORES = [
+  "bg-indigo-500",
+  "bg-rose-500",
+  "bg-amber-500",
+  "bg-emerald-500",
+  "bg-sky-500",
+  "bg-violet-500",
+  "bg-pink-500",
+  "bg-teal-500",
+];
+
+/** Cor determinística a partir do nome, pra cada aluno/professora sempre
+ * cair na mesma cor de avatar em qualquer lugar do app. */
+function corAvatar(nome: string) {
+  let hash = 0;
+  for (let i = 0; i < nome.length; i++) {
+    hash = nome.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_CORES[Math.abs(hash) % AVATAR_CORES.length];
+}
+
+function iniciais(nome: string) {
+  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return "?";
+  const primeira = partes[0][0] ?? "";
+  const ultima = partes.length > 1 ? (partes[partes.length - 1][0] ?? "") : "";
+  return (primeira + ultima).toUpperCase();
+}
+
+export function Avatar({ nome, size = "md" }: { nome: string; size?: "sm" | "md" | "lg" }) {
+  const dims = { sm: "h-7 w-7 text-[11px]", md: "h-9 w-9 text-xs", lg: "h-11 w-11 text-sm" }[size];
+  return (
+    <div
+      className={`flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${dims} ${corAvatar(nome)}`}
+      aria-hidden="true"
+    >
+      {iniciais(nome)}
+    </div>
+  );
+}
+
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-md bg-surface-2 ${className}`} />;
+}

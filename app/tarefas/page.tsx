@@ -34,14 +34,15 @@ export default async function TarefasPage() {
     );
   }
 
-  const [{ data: tarefas }, { data: aulas }, { data: alunos }] = await Promise.all([
+  const [{ data: tarefas }, { data: aulas }, { data: alunos }, { data: professor }] = await Promise.all([
     supabase.from("tarefas_aula").select("*").order("criado_em", { ascending: false }),
     supabase.from("aulas").select("*"),
     supabase.from("alunos").select("*"),
+    supabase.from("professores").select("nome").eq("id", user.id).maybeSingle(),
   ]);
 
   return (
-    <ProfessorShell userEmail={user.email ?? ""}>
+    <ProfessorShell userEmail={user.email ?? ""} professorNome={professor?.nome}>
       <TarefasLista
         initialTarefas={(tarefas as TarefaAula[]) ?? []}
         aulas={(aulas as Aula[]) ?? []}

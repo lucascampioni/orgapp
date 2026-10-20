@@ -52,7 +52,7 @@ export default function ProfessorPerfilView({
   }
 
   return (
-    <ProfessorShell userEmail={userEmail}>
+    <ProfessorShell userEmail={userEmail} professorNome={professor.nome}>
       <PerfilForm
         nome={professor.nome}
         dataNascimento={professor.data_nascimento}

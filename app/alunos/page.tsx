@@ -19,20 +19,27 @@ export default async function AlunosPage() {
     redirect("/");
   }
 
-  const [{ data: alunos }, { data: alunoProfessor }, { data: aulas }, { data: tarefasAula }, { data: convites }] =
-    await Promise.all([
-      supabase.from("alunos").select("*").order("nome", { ascending: true }),
-      supabase.from("aluno_professor").select("*"),
-      supabase.from("aulas").select("*").order("data", { ascending: true }),
-      supabase
-        .from("tarefas_aula")
-        .select("*")
-        .order("criado_em", { ascending: true }),
-      supabase.from("convites").select("*").order("criado_em", { ascending: false }),
-    ]);
+  const [
+    { data: alunos },
+    { data: alunoProfessor },
+    { data: aulas },
+    { data: tarefasAula },
+    { data: convites },
+    { data: professor },
+  ] = await Promise.all([
+    supabase.from("alunos").select("*").order("nome", { ascending: true }),
+    supabase.from("aluno_professor").select("*"),
+    supabase.from("aulas").select("*").order("data", { ascending: true }),
+    supabase
+      .from("tarefas_aula")
+      .select("*")
+      .order("criado_em", { ascending: true }),
+    supabase.from("convites").select("*").order("criado_em", { ascending: false }),
+    supabase.from("professores").select("nome").eq("id", user.id).maybeSingle(),
+  ]);
 
   return (
-    <ProfessorShell userEmail={user.email ?? ""}>
+    <ProfessorShell userEmail={user.email ?? ""} professorNome={professor?.nome}>
       <AlunosLista
         initialAlunos={(alunos as Aluno[]) ?? []}
         initialAlunoProfessor={(alunoProfessor as AlunoProfessor[]) ?? []}
