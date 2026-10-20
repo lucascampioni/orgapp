@@ -35,6 +35,10 @@ Em `/cadastro`, quem escolhe "Sou aluno(a)" cria a própria conta (nome, e-mail,
 
 Se o seu projeto Supabase tiver "Confirm email" ativado (Authentication → Providers → Email), o aluno recebe um e-mail de confirmação antes de conseguir entrar - confira em **Authentication → URL Configuration** se o **Site URL** aponta pra sua URL de produção (não `localhost`), senão o link do e-mail leva pro lugar errado.
 
+### Esqueci minha senha
+
+Em `/login`, o link "Esqueci minha senha" leva pra `/esqueci-senha`, que manda um e-mail de redefinição (via `resetPasswordForEmail`); o link desse e-mail passa por `/api/auth/confirm` (troca o código pela sessão) antes de cair em `/redefinir-senha`, onde a pessoa escolhe a senha nova. Pra isso funcionar em produção, em **Authentication → URL Configuration → Redirect URLs** do Supabase, adicione `https://SEU-DOMINIO/api/auth/confirm` (e, se quiser testar localmente, `http://localhost:3000/api/auth/confirm`) - sem a URL estar na lista, o Supabase recusa o redirect e o link do e-mail não funciona.
+
 ### Gravação e resumo de aulas com IA (opcional)
 
 Uma aula com um link do Google Meet cadastrado pode ter um bot (via [Recall.ai](https://recall.ai)) entrando pra transcrever, e a transcrição vira automaticamente resumo, tópicos abordados, erros do aluno (com correção e explicação), pontos positivos/a melhorar, uma sugestão pra próxima aula, tarefas de acompanhamento e vocabulário novo (tudo via API da Anthropic) na própria aula e no perfil do aluno. O bot não grava vídeo da reunião (`video_mixed_mp4: null` em `lib/recall.ts`, caso de uso oficial "Transcribing without recording" da API do Recall.ai) - só precisa do áudio pra gerar a transcrição - e a mídia é apagada (`delete_media`) assim que o resumo é gerado, como camada extra de segurança de custo/armazenamento. Isso é opcional — sem essas variáveis o resto do app funciona normalmente, só o botão "Iniciar gravação com IA" não funciona.

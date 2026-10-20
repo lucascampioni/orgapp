@@ -33,7 +33,16 @@ export async function proxy(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/cadastro");
 
-  if (!user && !isPublicPage) {
+  // /redefinir-senha precisa da sessão que /api/auth/confirm acabou de
+  // estabelecer (vindo do link de e-mail), então não pode cair na mesma
+  // regra de "se tem user, redireciona pra /" do login/cadastro - essas
+  // duas rotas só precisam poder ser acessadas sem exigir login prévio,
+  // em qualquer um dos dois estados (com ou sem sessão).
+  const isFluxoRedefinirSenha =
+    request.nextUrl.pathname.startsWith("/esqueci-senha") ||
+    request.nextUrl.pathname.startsWith("/redefinir-senha");
+
+  if (!user && !isPublicPage && !isFluxoRedefinirSenha) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
