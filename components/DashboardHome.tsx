@@ -297,7 +297,7 @@ export default function DashboardHome({
           label="Pagamentos em aberto"
           value={pagamentosEmAberto.length}
           contexto={pagamentosVencidos > 0 ? `${pagamentosVencidos} vencido(s)` : null}
-          href="/alunos"
+          href="/pagamentos"
         />
       </div>
 

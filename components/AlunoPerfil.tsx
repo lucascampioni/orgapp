@@ -34,9 +34,32 @@ type VincularContaResultado = {
 
 type AlunoSubTab = "geral" | "aulas" | "vocabulario" | "pagamentos";
 
+/** Gera N vencimentos mensais a partir de hoje, caindo sempre no
+ * diaVencimento (ou no último dia do mês, se ele tiver menos dias que
+ * isso - ex: dia 31 em fevereiro). Começa no mês atual se esse dia ainda
+ * não passou, senão no mês seguinte. */
+function proximosVencimentosMensais(diaVencimento: number, quantidade: number): string[] {
+  const hojeData = new Date();
+  const ano = hojeData.getFullYear();
+  let mes = hojeData.getMonth();
+  if (hojeData.getDate() > diaVencimento) {
+    mes += 1;
+  }
+
+  const vencimentos: string[] = [];
+  for (let i = 0; i < quantidade; i++) {
+    const mesAlvo = mes + i;
+    const ultimoDiaDoMes = new Date(ano, mesAlvo + 1, 0).getDate();
+    const dia = Math.min(diaVencimento, ultimoDiaDoMes);
+    const data = new Date(ano, mesAlvo, dia);
+    vencimentos.push(data.toISOString().slice(0, 10));
+  }
+  return vencimentos;
+}
+
 export default function AlunoPerfil({
   aluno: alunoInicial,
-  vinculo,
+  vinculo: vinculoInicial,
   convitePendente: convitePendenteInicial,
   initialAulas,
   initialTarefasAula,
@@ -58,6 +81,7 @@ export default function AlunoPerfil({
   const [convitePendente, setConvitePendente] = useState<Convite | null>(convitePendenteInicial);
 
   const [aluno, setAluno] = useState<Aluno>(alunoInicial);
+  const [vinculo, setVinculo] = useState<AlunoProfessor | null>(vinculoInicial);
   const [aulas, setAulas] = useState<Aula[]>(initialAulas);
   const [tarefasAula, setTarefasAula] = useState<TarefaAula[]>(initialTarefasAula);
   const [vocabulario, setVocabulario] = useState<Vocabulario[]>(initialVocabulario);
@@ -312,6 +336,49 @@ export default function AlunoPerfil({
     }
   }
 
+  async function atualizarValorPorAula(valor: number | null) {
+    if (!vinculo) return;
+    const prev = vinculo;
+    setVinculo((cur) => (cur ? { ...cur, valor_por_aula: valor } : cur));
+    const { error } = await supabase
+      .from("aluno_professor")
+      .update({ valor_por_aula: valor })
+      .eq("id", vinculo.id);
+    if (error) {
+      console.error("Falha ao salvar valor por aula", error);
+      setVinculo(prev);
+    }
+  }
+
+  async function gerarPagamentosRecorrentes(config: {
+    diaVencimento: number;
+    quantidade: number;
+    modo: "fixo" | "por_aula";
+    valorFixo: number;
+    valorPorAula: number;
+  }) {
+    if (config.modo === "por_aula") {
+      await atualizarValorPorAula(config.valorPorAula);
+    }
+
+    const vencimentos = proximosVencimentosMensais(config.diaVencimento, config.quantidade);
+    const novos = vencimentos.map((vencimento) => {
+      const valor =
+        config.modo === "fixo"
+          ? config.valorFixo
+          : aulas.filter((a) => (a.data ?? "").slice(0, 7) === vencimento.slice(0, 7)).length *
+            config.valorPorAula;
+      return { aluno_id: aluno.id, valor, vencimento };
+    });
+
+    const { data, error } = await supabase.from("pagamentos").insert(novos).select();
+    if (error || !data) {
+      console.error("Falha ao gerar cobranças recorrentes", error);
+      return;
+    }
+    setPagamentos((prev) => [...prev, ...(data as Pagamento[])]);
+  }
+
   const hojeStr = hoje();
   const pendencias = tarefasAula.filter((t) => !t.concluida && aulas.some((a) => a.id === t.aula_id));
   const proximasAulas = aulas
@@ -413,9 +480,11 @@ export default function AlunoPerfil({
       {sub === "pagamentos" && (
         <AlunoPagamentos
           pagamentos={pagamentos}
+          valorPorAulaAtual={vinculo?.valor_por_aula ?? null}
           onAdd={addPagamento}
           onMarcarPago={marcarPago}
           onRemove={removePagamento}
+          onGerarRecorrencia={gerarPagamentosRecorrentes}
         />
       )}
 
@@ -844,19 +913,39 @@ function AlunoVocabulario({
 
 function AlunoPagamentos({
   pagamentos,
+  valorPorAulaAtual,
   onAdd,
   onMarcarPago,
   onRemove,
+  onGerarRecorrencia,
 }: {
   pagamentos: Pagamento[];
+  valorPorAulaAtual: number | null;
   onAdd: (valor: number, vencimento: string, observacoes: string) => Promise<void>;
   onMarcarPago: (id: string) => void;
   onRemove: (id: string) => void;
+  onGerarRecorrencia: (config: {
+    diaVencimento: number;
+    quantidade: number;
+    modo: "fixo" | "por_aula";
+    valorFixo: number;
+    valorPorAula: number;
+  }) => Promise<void>;
 }) {
   const [valor, setValor] = useState("");
   const [vencimento, setVencimento] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [mostrarRecorrencia, setMostrarRecorrencia] = useState(false);
+  const [diaVencimento, setDiaVencimento] = useState("10");
+  const [quantidade, setQuantidade] = useState("12");
+  const [modoCalculo, setModoCalculo] = useState<"fixo" | "por_aula">("fixo");
+  const [valorFixoRecorrencia, setValorFixoRecorrencia] = useState("");
+  const [valorPorAula, setValorPorAula] = useState(
+    valorPorAulaAtual != null ? String(valorPorAulaAtual) : "",
+  );
+  const [gerando, setGerando] = useState(false);
 
   async function handleAdd() {
     const num = Number(valor.replace(",", "."));
@@ -867,6 +956,28 @@ function AlunoPagamentos({
     setValor("");
     setVencimento("");
     setObservacoes("");
+  }
+
+  async function handleGerarRecorrencia() {
+    const dia = Math.min(31, Math.max(1, Number(diaVencimento) || 1));
+    const qtd = Math.min(36, Math.max(1, Number(quantidade) || 1));
+    const fixo = Number(valorFixoRecorrencia.replace(",", "."));
+    const porAula = Number(valorPorAula.replace(",", "."));
+
+    if (modoCalculo === "fixo" && !fixo) return;
+    if (modoCalculo === "por_aula" && !porAula) return;
+
+    setGerando(true);
+    await onGerarRecorrencia({
+      diaVencimento: dia,
+      quantidade: qtd,
+      modo: modoCalculo,
+      valorFixo: fixo,
+      valorPorAula: porAula,
+    });
+    setGerando(false);
+    setMostrarRecorrencia(false);
+    setValorFixoRecorrencia("");
   }
 
   const proximos = pagamentos
@@ -929,6 +1040,94 @@ function AlunoPagamentos({
         <button onClick={handleAdd} disabled={saving} className={primaryButtonClass}>
           Adicionar
         </button>
+      </div>
+
+      <div className="mb-4 rounded-xl border border-border bg-surface-2 p-3">
+        <button
+          onClick={() => setMostrarRecorrencia((v) => !v)}
+          className="text-sm font-medium text-ink"
+        >
+          Gerar cobranças recorrentes {mostrarRecorrencia ? "▲" : "▼"}
+        </button>
+
+        {mostrarRecorrencia && (
+          <div className="mt-3">
+            <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div>
+                <label className={labelClass}>Dia do vencimento</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={31}
+                  value={diaVencimento}
+                  onChange={(e) => setDiaVencimento(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Quantidade de meses</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={36}
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+              <div className="col-span-2">
+                <label className={labelClass}>Como calcular o valor</label>
+                <select
+                  value={modoCalculo}
+                  onChange={(e) => setModoCalculo(e.target.value as "fixo" | "por_aula")}
+                  className={inputClass}
+                >
+                  <option value="fixo">Valor fixo todo mês</option>
+                  <option value="por_aula">Pelas aulas do calendário (preço por aula)</option>
+                </select>
+              </div>
+            </div>
+
+            {modoCalculo === "fixo" ? (
+              <div className="mb-3">
+                <label className={labelClass}>Valor mensal (R$)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={valorFixoRecorrencia}
+                  onChange={(e) => setValorFixoRecorrencia(e.target.value)}
+                  placeholder="Ex: 300"
+                  className={inputClass}
+                />
+              </div>
+            ) : (
+              <div className="mb-3">
+                <label className={labelClass}>Preço por aula (R$)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={valorPorAula}
+                  onChange={(e) => setValorPorAula(e.target.value)}
+                  placeholder="Ex: 50"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-muted">
+                  O valor de cada mês é esse preço vezes a quantidade de aulas já marcadas no
+                  calendário pra esse aluno naquele mês. Meses sem aula agendada ainda geram
+                  cobrança de R$ 0,00, que dá pra editar ou remover depois.
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={handleGerarRecorrencia}
+              disabled={gerando}
+              className={primaryButtonClass}
+            >
+              {gerando ? "Gerando..." : "Gerar cobranças"}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mb-2 text-xs font-medium text-muted">Próximos pagamentos</div>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { CalendarDays, CheckSquare, Home, Menu, User, Users, X } from "lucide-react";
+import { CalendarDays, CheckSquare, Home, Menu, User, Users, Wallet, X } from "lucide-react";
 import Logo from "@/components/Logo";
 import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -14,6 +14,7 @@ const NAV = [
   { href: "/alunos", label: "Alunos", icon: Users },
   { href: "/calendario", label: "Calendário", icon: CalendarDays },
   { href: "/tarefas", label: "Tarefas", icon: CheckSquare },
+  { href: "/pagamentos", label: "Pagamentos", icon: Wallet },
   { href: "/perfil", label: "Perfil", icon: User },
 ];
 

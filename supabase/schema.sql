@@ -295,6 +295,12 @@ create unique index if not exists alunos_user_id_unique_idx on public.alunos (us
 -- leitura à tabela professores de outra conta.
 alter table public.aluno_professor add column if not exists idioma text;
 alter table public.aluno_professor add column if not exists professor_nome text;
+-- Preço por aula desse aluno com essa professora (opcional) - usado como
+-- alternativa a um valor fixo na hora de gerar cobranças recorrentes: em
+-- vez de um valor fixo todo mês, calcula quantidade de aulas no período x
+-- esse valor. Fica aqui (não em pagamentos) porque é uma configuração do
+-- vínculo, não de uma cobrança específica.
+alter table public.aluno_professor add column if not exists valor_por_aula numeric(10, 2);
 -- Cópia do gênero da professora (mesmo motivo do professor_nome acima):
 -- sem isso, o aluno não tem como saber se trata a professora dele de
 -- "professor" ou "professora" sem acesso de leitura à tabela professores.

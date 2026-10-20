@@ -80,6 +80,7 @@ export interface AlunoProfessor {
   idioma: string | null;
   professor_nome: string | null;
   professor_sexo: Sexo | null;
+  valor_por_aula: number | null;
   criado_em: string;
 }
 
