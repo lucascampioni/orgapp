@@ -76,9 +76,15 @@
 html,
 body {
   height: 100%;
+  /* Trava qualquer rolagem horizontal da página - esse app é só vertical,
+     e no mobile qualquer elemento que vaze um pouco da largura da tela
+     (ex: texto sem quebra, ícone com padding mal calculado) acaba
+     empurrando a página inteira pro lado, cortando o conteúdo. */
+  overflow-x: hidden;
 }
 
 body {
+  width: 100%;
   background: var(--color-bg);
   color: var(--color-ink);
 }
