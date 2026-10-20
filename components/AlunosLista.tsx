@@ -119,16 +119,16 @@ export default function AlunosLista({
       <h1 className="mb-4 font-display text-2xl font-semibold text-ink">Alunos</h1>
 
       <div className="mb-6 rounded-xl border border-border bg-surface p-3">
-        <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-sm font-medium text-ink">Adicionar aluno</span>
-          <div className="inline-flex shrink-0 rounded-lg border border-border p-0.5">
+          <div className="flex rounded-lg border border-border p-0.5">
             <button
               type="button"
               onClick={() => {
                 setJaTemCadastro(false);
                 setErroConvite(null);
               }}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+              className={`flex-1 rounded-md px-2.5 py-1 text-xs font-medium transition ${
                 !jaTemCadastro ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"
               }`}
             >
@@ -140,7 +140,7 @@ export default function AlunosLista({
                 setJaTemCadastro(true);
                 setErroConvite(null);
               }}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+              className={`flex-1 rounded-md px-2.5 py-1 text-xs font-medium transition ${
                 jaTemCadastro ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"
               }`}
             >
