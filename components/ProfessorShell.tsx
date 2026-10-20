@@ -49,15 +49,15 @@ export default function ProfessorShell({
   return (
     <div className="min-h-full md:flex">
       {/* Topo mobile: só logo + hambúrguer - o resto (nav, usuário) mora no drawer. */}
-      <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-3 md:hidden">
-        <Logo size="sm" />
+      <div className="flex items-center gap-3 border-b border-border bg-surface px-4 py-3 md:hidden">
         <button
           onClick={() => setDrawerAberto(true)}
           title="Abrir menu"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted transition hover:text-ink"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted transition hover:text-ink"
         >
           <Menu size={20} strokeWidth={2} />
         </button>
+        <Logo size="sm" />
       </div>
 
       {/* Drawer mobile */}
