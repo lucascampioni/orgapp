@@ -305,9 +305,6 @@ alter table public.aluno_professor add column if not exists valor_por_aula numer
 -- sem isso, o aluno não tem como saber se trata a professora dele de
 -- "professor" ou "professora" sem acesso de leitura à tabela professores.
 alter table public.aluno_professor add column if not exists professor_sexo text;
-alter table public.convites add column if not exists idioma text;
-alter table public.convites add column if not exists professor_sexo text;
-
 create or replace function public.criar_aluno(
   p_nome text,
   p_contato text default null,
@@ -394,6 +391,15 @@ create table if not exists public.convites (
   respondido_em timestamptz,
   unique (aluno_id, professor_id)
 );
+
+-- idioma/professor_sexo não entram direto na create table acima porque
+-- vieram de evoluções posteriores do schema - mas, diferente do caso de
+-- aluno_professor (que já existe desde o início do arquivo), aqui tinham
+-- que vir DEPOIS da tabela existir, senão "alter table ... add column"
+-- falha com "relation does not exist" num banco criado do zero (só não
+-- dava pra notar rodando contra um banco que já tinha convites de antes).
+alter table public.convites add column if not exists idioma text;
+alter table public.convites add column if not exists professor_sexo text;
 
 alter table public.convites enable row level security;
 

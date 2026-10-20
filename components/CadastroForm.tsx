@@ -267,13 +267,21 @@ function ProfessoraSignupForm({ onVoltar }: { onVoltar: () => void }) {
     if (error) {
       setLoading(false);
       // O bloqueio de conta não liberada acontece num trigger do banco (ver
-      // schema.sql); não dá pra garantir com 100% de certeza que o
-      // Supabase repassa essa mensagem específica sem alterar (às vezes
-      // erros de trigger em auth.users viram um "Database error..."
-      // genérico) - por isso o fallback pega qualquer coisa que pareça
-      // vir desse bloqueio, mas se não bater com nada, mostra o erro cru.
+      // schema.sql) levantando uma exceção durante o insert em auth.users -
+      // o GoTrue devolve isso como HTTP 500, e o supabase-js trata QUALQUER
+      // 500 como erro de rede: nunca lê o corpo da resposta, então
+      // error.message nunca chega a ser o texto real do erro (vira só "{}"
+      // de um JSON.stringify de uma Response vazia). Por isso checar
+      // error.status é a única forma confiável de reconhecer esse caso -
+      // string-match em error.message (ainda deixado como fallback) nunca
+      // bate. Como essa é a única validação que derruba o insert em
+      // auth.users nesse fluxo, qualquer 500 aqui é tratado como bloqueio.
       const msg = error.message.toLowerCase();
-      if (msg.includes("professora_nao_liberada") || msg.includes("database error saving new user")) {
+      if (
+        error.status === 500 ||
+        msg.includes("professora_nao_liberada") ||
+        msg.includes("database error saving new user")
+      ) {
         setError(MSG_NAO_LIBERADA);
       } else {
         setError(error.message);
