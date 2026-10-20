@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
+import PasswordField from "@/components/PasswordField";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -61,15 +62,12 @@ export default function LoginForm() {
         placeholder="voce@escola.com"
       />
 
-      <label className="mb-1 block text-xs font-medium text-muted">Senha</label>
-      <input
-        type="password"
-        required
-        autoComplete="current-password"
+      <PasswordField
+        label="Senha"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="mb-1 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
-        placeholder="••••••••"
+        onChange={setPassword}
+        autoComplete="current-password"
+        className="mb-1"
       />
       <div className="mb-4 text-right text-xs">
         <Link href="/esqueci-senha" className="text-muted hover:text-brand hover:underline">

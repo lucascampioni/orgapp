@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
+import PasswordField from "@/components/PasswordField";
 
 export default function RedefinirSenhaForm() {
   const router = useRouter();
@@ -49,28 +50,13 @@ export default function RedefinirSenhaForm() {
         <ThemeToggle />
       </div>
 
-      <label className="mb-1 block text-xs font-medium text-muted">Nova senha</label>
-      <input
-        type="password"
-        required
-        minLength={6}
-        autoComplete="new-password"
-        value={senha}
-        onChange={(e) => setSenha(e.target.value)}
-        className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
-        placeholder="••••••••"
-      />
-
-      <label className="mb-1 block text-xs font-medium text-muted">Confirmar senha</label>
-      <input
-        type="password"
-        required
-        minLength={6}
-        autoComplete="new-password"
+      <PasswordField label="Nova senha" value={senha} onChange={setSenha} autoComplete="new-password" />
+      <PasswordField
+        label="Confirmar senha"
         value={confirmacao}
-        onChange={(e) => setConfirmacao(e.target.value)}
-        className="mb-4 w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink outline-none transition focus:border-brand"
-        placeholder="••••••••"
+        onChange={setConfirmacao}
+        autoComplete="new-password"
+        bloquearColar
       />
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}

@@ -3,10 +3,10 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
+import PasswordField from "@/components/PasswordField";
 import { inputClass, labelClass } from "@/components/ui";
 import { SEXOS } from "@/lib/sexo";
 import type { Sexo } from "@/lib/types";
@@ -15,49 +15,6 @@ type Escolha = "escolha" | "professora" | "aluno";
 
 const cardClass =
   "w-full rounded-xl border border-border bg-surface-2 p-4 text-left transition hover:border-brand";
-
-function PasswordField({
-  label,
-  value,
-  onChange,
-  autoComplete,
-  bloquearColar = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  autoComplete: string;
-  bloquearColar?: boolean;
-}) {
-  const [visivel, setVisivel] = useState(false);
-  return (
-    <div className="mb-4">
-      <label className={labelClass}>{label}</label>
-      <div className="relative">
-        <input
-          type={visivel ? "text" : "password"}
-          required
-          minLength={6}
-          autoComplete={autoComplete}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onPaste={bloquearColar ? (e) => e.preventDefault() : undefined}
-          className={`${inputClass} pr-10`}
-          placeholder="••••••••"
-        />
-        <button
-          type="button"
-          onClick={() => setVisivel((v) => !v)}
-          tabIndex={-1}
-          title={visivel ? "Esconder senha" : "Mostrar senha"}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted transition hover:text-ink"
-        >
-          {visivel ? <EyeOff size={16} strokeWidth={2} /> : <Eye size={16} strokeWidth={2} />}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export default function CadastroForm() {
   const [tipo, setTipo] = useState<Escolha>("escolha");
