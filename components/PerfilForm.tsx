@@ -112,7 +112,7 @@ export default function PerfilForm({
           />
         </div>
         <div>
-          <label className={labelClass}>Sexo</label>
+          <label className={labelClass}>Gênero</label>
           <select value={sexo} onChange={(e) => setSexo(e.target.value as Sexo | "")} className={inputClass}>
             <option value="">Não informado</option>
             {SEXOS.map((s) => (

@@ -8,7 +8,12 @@ import LogoutButton from "@/components/LogoutButton";
 import ThemeToggle from "@/components/ThemeToggle";
 import { createClient } from "@/lib/supabase/client";
 import { PersonIcon } from "@/components/ui";
+import { tratarProfessor } from "@/lib/sexo";
 import type { AlunoProfessor, Convite } from "@/lib/types";
+
+function capitalizar(texto: string) {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
 
 const NAV = [
   { href: "/", label: "Início", icon: "◱" },
@@ -86,7 +91,17 @@ export default function AlunoShell({
               className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand/40 bg-surface-2 px-3 py-2"
             >
               <span className="text-sm text-ink">
-                <strong>{c.professor_nome ?? "Uma professora"}</strong> quer te vincular como aluno(a).
+                {c.professor_nome ? (
+                  <>
+                    <strong>{c.professor_nome}</strong> ({tratarProfessor(c.professor_sexo)}) quer se
+                    conectar com você no Lumina.
+                  </>
+                ) : (
+                  <>
+                    {c.professor_sexo === "masculino" ? "Um" : c.professor_sexo === "feminino" ? "Uma" : "Um(a)"}{" "}
+                    {tratarProfessor(c.professor_sexo)} quer se conectar com você no Lumina.
+                  </>
+                )}
               </span>
               <div className="flex gap-2">
                 <button
@@ -156,7 +171,10 @@ export default function AlunoShell({
                     : "text-muted hover:bg-surface-2 hover:text-ink"
                 }`}
               >
-                {v.idioma ?? "Aulas"} - {v.professor_nome ? `Professora ${v.professor_nome}` : "Professora"}
+                {v.idioma ?? "Aulas"} -{" "}
+                {v.professor_nome
+                  ? `${capitalizar(tratarProfessor(v.professor_sexo))} ${v.professor_nome}`
+                  : capitalizar(tratarProfessor(v.professor_sexo))}
               </button>
             ))}
           </div>

@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Lumina - Painel para professoras de inglês",
+  title: "Lumina - Organização de aulas de inglês",
   description:
     "Alunos, aulas, vocabulário e pagamentos num só lugar, com resumo automático das aulas por IA.",
 };

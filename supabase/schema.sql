@@ -295,7 +295,12 @@ create unique index if not exists alunos_user_id_unique_idx on public.alunos (us
 -- leitura à tabela professores de outra conta.
 alter table public.aluno_professor add column if not exists idioma text;
 alter table public.aluno_professor add column if not exists professor_nome text;
+-- Cópia do gênero da professora (mesmo motivo do professor_nome acima):
+-- sem isso, o aluno não tem como saber se trata a professora dele de
+-- "professor" ou "professora" sem acesso de leitura à tabela professores.
+alter table public.aluno_professor add column if not exists professor_sexo text;
 alter table public.convites add column if not exists idioma text;
+alter table public.convites add column if not exists professor_sexo text;
 
 create or replace function public.criar_aluno(
   p_nome text,
@@ -313,6 +318,7 @@ as $$
 declare
   novo_aluno public.alunos;
   v_professor_nome text;
+  v_professor_sexo text;
 begin
   insert into public.alunos (nome, contato, observacoes, email)
   values (
@@ -323,14 +329,17 @@ begin
   )
   returning * into novo_aluno;
 
-  select coalesce(p.nome, split_part(u.email, '@', 1))
-  into v_professor_nome
+  select coalesce(p.nome, split_part(u.email, '@', 1)), p.sexo
+  into v_professor_nome, v_professor_sexo
   from auth.users u
   left join public.professores p on p.id = u.id
   where u.id = auth.uid();
 
-  insert into public.aluno_professor (aluno_id, professor_id, turma_id, idioma, professor_nome)
-  values (novo_aluno.id, auth.uid(), p_turma_id, nullif(trim(coalesce(p_idioma, '')), ''), v_professor_nome);
+  insert into public.aluno_professor (aluno_id, professor_id, turma_id, idioma, professor_nome, professor_sexo)
+  values (
+    novo_aluno.id, auth.uid(), p_turma_id, nullif(trim(coalesce(p_idioma, '')), ''),
+    v_professor_nome, v_professor_sexo
+  );
 
   return novo_aluno;
 exception
@@ -413,6 +422,7 @@ declare
   v_aluno_id uuid := p_aluno_id;
   v_idioma text := nullif(trim(coalesce(p_idioma, '')), '');
   v_professor_nome text;
+  v_professor_sexo text;
   v_convite public.convites;
 begin
   if v_email is null then
@@ -447,8 +457,8 @@ begin
   -- Contas de professora criadas antes do cadastro público existir (ex: via
   -- painel do Supabase) não têm linha em public.professores - cai pro
   -- prefixo do e-mail nesse caso, pra nunca mostrar em branco pro aluno.
-  select coalesce(p.nome, split_part(u.email, '@', 1))
-  into v_professor_nome
+  select coalesce(p.nome, split_part(u.email, '@', 1)), p.sexo
+  into v_professor_nome, v_professor_sexo
   from auth.users u
   left join public.professores p on p.id = u.id
   where u.id = auth.uid();
@@ -458,15 +468,17 @@ begin
   -- do aluno; a professora já pode editar a aba desse aluno (aulas,
   -- vocabulário etc.) enquanto o convite fica "pendente" só como indicação
   -- visual, não como bloqueio de acesso.
-  insert into public.aluno_professor (aluno_id, professor_id, idioma, professor_nome)
-  values (v_aluno_id, auth.uid(), v_idioma, v_professor_nome)
+  insert into public.aluno_professor (aluno_id, professor_id, idioma, professor_nome, professor_sexo)
+  values (v_aluno_id, auth.uid(), v_idioma, v_professor_nome, v_professor_sexo)
   on conflict (aluno_id, professor_id) do update
-    set idioma = excluded.idioma, professor_nome = excluded.professor_nome;
+    set idioma = excluded.idioma, professor_nome = excluded.professor_nome,
+        professor_sexo = excluded.professor_sexo;
 
-  insert into public.convites (aluno_id, professor_id, professor_nome, email, idioma)
-  values (v_aluno_id, auth.uid(), v_professor_nome, v_email, v_idioma)
+  insert into public.convites (aluno_id, professor_id, professor_nome, professor_sexo, email, idioma)
+  values (v_aluno_id, auth.uid(), v_professor_nome, v_professor_sexo, v_email, v_idioma)
   on conflict (aluno_id, professor_id) do update
-    set email = excluded.email, professor_nome = excluded.professor_nome, idioma = excluded.idioma,
+    set email = excluded.email, professor_nome = excluded.professor_nome,
+        professor_sexo = excluded.professor_sexo, idioma = excluded.idioma,
         status = 'pendente', respondido_em = null, criado_em = now()
   returning * into v_convite;
 
@@ -513,8 +525,11 @@ begin
         raise exception 'Essa conta já está vinculada a outro cadastro de aluno';
     end;
 
-    insert into public.aluno_professor (aluno_id, professor_id, idioma, professor_nome)
-    values (v_convite.aluno_id, v_convite.professor_id, v_convite.idioma, v_convite.professor_nome)
+    insert into public.aluno_professor (aluno_id, professor_id, idioma, professor_nome, professor_sexo)
+    values (
+      v_convite.aluno_id, v_convite.professor_id, v_convite.idioma,
+      v_convite.professor_nome, v_convite.professor_sexo
+    )
     on conflict (aluno_id, professor_id) do nothing;
 
     update public.convites set status = 'aceito', respondido_em = now() where id = p_convite_id;

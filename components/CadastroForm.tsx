@@ -135,7 +135,7 @@ function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
           />
         </div>
         <div>
-          <label className={labelClass}>Sexo</label>
+          <label className={labelClass}>Gênero</label>
           <select
             required
             value={sexo}
@@ -199,7 +199,7 @@ function AlunoSignupForm({ onVoltar }: { onVoltar: () => void }) {
 }
 
 const MSG_NAO_LIBERADA =
-  "Só quem foi liberado pelo administrador pode criar conta de professora. Entre em contato com a administração do Lumina pra pedir acesso.";
+  "Só quem foi liberado pelo administrador pode criar conta de professor(a). Entre em contato com a administração do Lumina pra pedir acesso.";
 
 function ProfessoraSignupForm({ onVoltar }: { onVoltar: () => void }) {
   const router = useRouter();
@@ -287,7 +287,7 @@ function ProfessoraSignupForm({ onVoltar }: { onVoltar: () => void }) {
           />
         </div>
         <div>
-          <label className={labelClass}>Sexo</label>
+          <label className={labelClass}>Gênero</label>
           <select
             required
             value={sexo}

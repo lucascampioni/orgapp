@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Aluno, AlunoProfessor, Aula, Pagamento, TarefaAula, Vocabulario } from "@/lib/types";
 import { hoje } from "@/components/ui";
+import { tratarProfessor } from "@/lib/sexo";
 import { useVinculoAtivo } from "@/lib/useVinculoAtivo";
 import AlunoShell from "@/components/AlunoShell";
 
@@ -51,7 +52,7 @@ export default function AlunoHome({
     return (
       <AlunoShell userEmail={userEmail} vinculos={[]} vinculoAtivoId="" onSelecionarVinculo={() => {}}>
         <div className="rounded-xl border border-border bg-surface p-5 text-sm text-muted">
-          Nenhum vínculo encontrado ainda. Peça pra sua professora cadastrar o e-mail{" "}
+          Nenhum vínculo encontrado ainda. Peça para seu professor ou professora cadastrar o e-mail{" "}
           <span className="text-ink">{userEmail}</span> no seu perfil dentro do Lumina - assim
           que ela fizer isso, suas aulas aparecem aqui automaticamente.
         </div>
@@ -90,7 +91,10 @@ export default function AlunoHome({
         </h1>
         <p className="mt-1 text-sm text-muted">
           Aqui está o resumo das suas aulas{vinculo.idioma ? ` de ${vinculo.idioma}` : ""}
-          {vinculo.professor_nome ? ` com a professora ${vinculo.professor_nome}` : ""}.
+          {vinculo.professor_nome
+            ? ` com ${vinculo.professor_sexo === "feminino" ? "a" : "o"} ${tratarProfessor(vinculo.professor_sexo)} ${vinculo.professor_nome}`
+            : ""}
+          .
         </p>
       </header>
 
