@@ -43,3 +43,9 @@ next-env.d.ts
 
 # lockfile omitido do controle de versao neste repo (regenerado via `npm install`)
 package-lock.json
+
+# estado local do Supabase CLI (supabase start/init pra testar contra um
+# Postgres local) - nunca deve ir pro repo, é descartável por máquina
+supabase/.temp/
+supabase/.branches/
+supabase/config.toml
