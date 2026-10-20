@@ -98,3 +98,17 @@ body {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
 }
+
+/* Campo de formulário com fonte menor que 16px faz o Safari do iOS dar
+   zoom automático na página ao focar (pra "ajudar" a ler) - os inputs do
+   app usam text-sm/text-xs (14px/12px), então isso acontecia em todo
+   campo. !important é necessário pra vencer a especificidade das classes
+   do Tailwind (ex: text-sm) sem precisar trocar o tamanho de fonte visível
+   em cada formulário. Só no mobile pra não mudar nada no desktop. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
