@@ -40,7 +40,7 @@ export async function createBot(meetingUrl: string, webhookUrl: string, joinAt?:
     headers: authHeaders(),
     body: JSON.stringify({
       meeting_url: meetingUrl,
-      bot_name: "Painel da Professora",
+      bot_name: "AI Lumina",
       webhook_url: webhookUrl,
       ...(joinAt ? { join_at: joinAt } : {}),
       // O campo antigo "transcription_options" foi descontinuado pela
