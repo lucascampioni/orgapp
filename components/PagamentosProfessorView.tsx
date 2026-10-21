@@ -4,7 +4,15 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Avatar, TabButton, hoje, secondaryButtonClass } from "@/components/ui";
+import {
+  Avatar,
+  TabButton,
+  hoje,
+  inputClass,
+  labelClass,
+  primaryButtonClass,
+  secondaryButtonClass,
+} from "@/components/ui";
 import type { Aluno, Pagamento } from "@/lib/types";
 
 type Filtro = "em_aberto" | "vencidos" | "pagos" | "todos";
@@ -20,9 +28,45 @@ export default function PagamentosProfessorView({
   const [pagamentos, setPagamentos] = useState<Pagamento[]>(pagamentosIniciais);
   const [filtro, setFiltro] = useState<Filtro>("em_aberto");
 
+  const [novoAlunoId, setNovoAlunoId] = useState("");
+  const [novoValor, setNovoValor] = useState("");
+  const [novoVencimento, setNovoVencimento] = useState("");
+  const [novasObservacoes, setNovasObservacoes] = useState("");
+  const [lancando, setLancando] = useState(false);
+
   const hojeStr = hoje();
   const inicioMes = hojeStr.slice(0, 7);
   const alunoPorId = useMemo(() => new Map(alunos.map((a) => [a.id, a])), [alunos]);
+  const alunosOrdenados = useMemo(
+    () => [...alunos].sort((a, b) => a.nome.localeCompare(b.nome)),
+    [alunos],
+  );
+
+  async function lancarCobranca() {
+    const valor = Number(novoValor.replace(",", "."));
+    if (!novoAlunoId || !valor || !novoVencimento) return;
+    setLancando(true);
+    const { data, error } = await supabase
+      .from("pagamentos")
+      .insert({
+        aluno_id: novoAlunoId,
+        valor,
+        vencimento: novoVencimento,
+        observacoes: novasObservacoes.trim() || null,
+      })
+      .select()
+      .single();
+    setLancando(false);
+    if (error || !data) {
+      console.error("Falha ao lançar cobrança", error);
+      return;
+    }
+    setPagamentos((prev) => [...prev, data as Pagamento]);
+    setNovoAlunoId("");
+    setNovoValor("");
+    setNovoVencimento("");
+    setNovasObservacoes("");
+  }
 
   async function marcarPago(id: string) {
     const anterior = pagamentos;
@@ -90,6 +134,63 @@ export default function PagamentosProfessorView({
             R$ {somaRecebidoMes.toFixed(2)}
           </div>
           <div className="mt-0.5 text-xs text-muted">{recebidoEsteMes.length} pagamento(s)</div>
+        </div>
+      </div>
+
+      <div className="mb-6 rounded-xl border border-border bg-surface p-4">
+        <h2 className="mb-3 text-sm font-semibold text-ink">Lançar cobrança</h2>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[160px] flex-1">
+            <label className={labelClass}>Aluno</label>
+            <select
+              value={novoAlunoId}
+              onChange={(e) => setNovoAlunoId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="" disabled>
+                Selecione...
+              </option>
+              {alunosOrdenados.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Valor</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={novoValor}
+              onChange={(e) => setNovoValor(e.target.value)}
+              placeholder="Ex: 150"
+              className={inputClass}
+              style={{ width: "120px" }}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Vencimento</label>
+            <input
+              type="date"
+              value={novoVencimento}
+              onChange={(e) => setNovoVencimento(e.target.value)}
+              className={inputClass}
+              style={{ width: "auto" }}
+            />
+          </div>
+          <div className="min-w-[140px] flex-1">
+            <label className={labelClass}>Observação (opcional)</label>
+            <input
+              type="text"
+              value={novasObservacoes}
+              onChange={(e) => setNovasObservacoes(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <button onClick={lancarCobranca} disabled={lancando} className={primaryButtonClass}>
+            {lancando ? "Lançando..." : "Lançar"}
+          </button>
         </div>
       </div>
 
