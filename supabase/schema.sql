@@ -88,6 +88,18 @@ alter table public.aulas add column if not exists resumo_ia text;
 alter table public.aulas add column if not exists recall_bot_id text;
 alter table public.aulas add column if not exists professor_id uuid references auth.users(id) on delete cascade;
 alter table public.aulas add column if not exists aluno_id uuid references public.alunos(id) on delete cascade;
+-- "add column if not exists" acima é um no-op em bancos onde essa coluna já
+-- existe (criada por essa mesma linha antes da create table lá em cima
+-- ganhar "default auth.uid()" direto na definição) - nesses bancos a
+-- coluna nunca ganha o default, porque "create table if not exists" não
+-- reaplica nada numa tabela que já existe. Sem o default, o insert de aula
+-- do app (que nunca manda professor_id explicitamente, conta com esse
+-- default) grava NULL em professor_id, e isso derruba a policy
+-- aulas_all_own ("new row violates row-level security policy for table
+-- aulas") em vez de um erro mais claro de coluna obrigatória. "alter
+-- column set default", diferente de "add column", sempre aplica, mesmo
+-- numa coluna que já existe - por isso corrige isso em qualquer banco.
+alter table public.aulas alter column professor_id set default auth.uid();
 
 -- Preenchidos automaticamente pela IA a partir da transcrição (ver
 -- app/api/recall/webhook). topicos/pontos_* são arrays de texto simples.
@@ -165,6 +177,9 @@ create table if not exists public.materiais (
 
 alter table public.turmas add column if not exists professor_id uuid references auth.users(id) on delete cascade;
 alter table public.materiais add column if not exists professor_id uuid references auth.users(id) on delete cascade;
+-- mesmo motivo do "alter column ... set default" de aulas, logo acima.
+alter table public.turmas alter column professor_id set default auth.uid();
+alter table public.materiais alter column professor_id set default auth.uid();
 
 -- ---------------------------------------------------------------------
 -- Migração de dados de versões anteriores (schema sem professor_id/aluno_id)
