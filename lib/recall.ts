@@ -133,6 +133,12 @@ export function extractTranscriptId(payload: unknown): string | null {
 
 export type StatusBot = {
   transcriptId: string | null;
+  /** Id da gravação mais recente do bot, mesmo sem transcript pronto ainda -
+   * usado pra disparar create_transcript nela (ver criarTranscriptAssincrono)
+   * quando o bot gravou mas não tem transcript nenhum (ex: foi criado com um
+   * provedor de tempo real por engano, que não deixa transcript recuperável
+   * depois - ver comentário em createBot). */
+  recordingId: string | null;
   /** Último código de status do bot (ex: "joining_call", "in_call_recording",
    * "call_ended", "done", "fatal") - histórico completo em status_changes,
    * conferido na doc da Recall.ai (docs.recall.ai/docs/bot-status-change-events).
@@ -162,8 +168,10 @@ export async function getTranscriptIdFromBot(botId: string): Promise<StatusBot> 
   const bot = (await res.json()) as Record<string, unknown>;
 
   let transcriptId: string | null = null;
+  let recordingId: string | null = null;
   const recordings = (bot.recordings as Record<string, unknown>[] | undefined) ?? [];
   for (const recording of recordings) {
+    if (typeof recording.id === "string") recordingId = recording.id;
     const shortcuts = recording.media_shortcuts as Record<string, unknown> | undefined;
     const transcript = shortcuts?.transcript as Record<string, unknown> | undefined;
     const data = transcript?.data as Record<string, unknown> | undefined;
@@ -178,7 +186,38 @@ export async function getTranscriptIdFromBot(botId: string): Promise<StatusBot> 
   const statusCode = typeof ultimoStatus?.code === "string" ? ultimoStatus.code : null;
   const statusMessage = typeof ultimoStatus?.message === "string" ? ultimoStatus.message : null;
 
-  return { transcriptId, statusCode, statusMessage };
+  return { transcriptId, recordingId, statusCode, statusMessage };
+}
+
+/**
+ * Dispara a geração de transcript assíncrono pra uma gravação que já existe
+ * (ex: bot criado antes do fix do provedor de streaming->async em
+ * createBot() - o áudio/gravação já existe na Recall.ai, só nunca foi pedido
+ * um transcript assíncrono dela). É assíncrono igual na criação do bot: não
+ * devolve o transcript na hora, só confirma que o processamento começou -
+ * reprocessar() precisa ser chamado de novo depois de alguns minutos pra
+ * pegar o resultado.
+ */
+export async function criarTranscriptAssincrono(recordingId: string): Promise<void> {
+  const res = await fetch(`${RECALL_API_BASE}/recording/${recordingId}/create_transcript/`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      provider: {
+        gladia_v2_async_transcription: {
+          language_config: {
+            code_switching: true,
+          },
+        },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Falha ao criar transcript assíncrono no Recall.ai (${res.status}): ${await res.text()}`,
+    );
+  }
 }
 
 export async function getTranscriptText(transcriptId: string): Promise<string> {

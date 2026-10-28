@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getTranscriptIdFromBot, getTranscriptText } from "@/lib/recall";
+import { criarTranscriptAssincrono, getTranscriptIdFromBot, getTranscriptText } from "@/lib/recall";
 import { summarize, extractVocabulario } from "@/lib/resumo-ia";
 
 /**
@@ -41,16 +41,44 @@ export async function POST(request: NextRequest) {
   }
 
   let transcriptId: string | null;
+  let recordingId: string | null;
   let statusCode: string | null;
   let statusMessage: string | null;
   try {
-    ({ transcriptId, statusCode, statusMessage } = await getTranscriptIdFromBot(aula.recall_bot_id));
+    ({ transcriptId, recordingId, statusCode, statusMessage } = await getTranscriptIdFromBot(
+      aula.recall_bot_id,
+    ));
   } catch (err) {
     console.error("Falha ao buscar transcript_id do bot", err);
     const detail = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Falha ao buscar transcript: ${detail}` }, { status: 502 });
   }
   if (!transcriptId) {
+    // Bot terminou e tem gravação, mas nunca teve transcript nenhum - caso
+    // clássico de uma aula gravada antes do fix do provedor de streaming
+    // (ver createBot em lib/recall.ts): a gravação existe na Recall.ai, só
+    // nunca foi pedido um transcript assíncrono dela. Dispara agora e avisa
+    // pra tentar de novo em alguns minutos, em vez de só dizer "não achei".
+    if (recordingId && statusCode === "done") {
+      try {
+        await criarTranscriptAssincrono(recordingId);
+        // 400 (não 2xx) de propósito: res.ok precisa ser false pra essa
+        // mensagem aparecer pro usuário - o código no front só lê body.error
+        // quando a resposta não é "ok" (ver reprocessarAula em
+        // AlunoPerfil.tsx/CalendarioView.tsx), senão ela chamaria
+        // refreshAula e sumiria com a mensagem sem o usuário ver.
+        return NextResponse.json(
+          {
+            error:
+              "Essa gravação nunca tinha pedido uma transcrição processável - acabei de pedir agora. Tenta reprocessar de novo em alguns minutos.",
+          },
+          { status: 400 },
+        );
+      } catch (err) {
+        console.error("Falha ao disparar transcript assíncrono da gravação existente", err);
+      }
+    }
+
     // status_changes dá um motivo de verdade em vez de um "não achei" cego -
     // ex: bot ainda gravando, call terminou mas transcrição ainda
     // processando, ou deu erro fatal (nesse caso o motivo aparece aqui).
