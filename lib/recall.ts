@@ -47,10 +47,17 @@ export async function createBot(meetingUrl: string, webhookUrl: string, joinAt?:
       // Recall.ai (dava 400 "This field is not allowed"). No formato atual
       // a transcrição precisa ser pedida por bot em recording_config -
       // configurar a Gladia só no dashboard não liga a transcrição sozinho.
-      // A própria API devolveu a lista de chaves aceitas nessa conta num
-      // erro 400 anterior; "gladia_v2_streaming" é a chave certa (não
-      // "gladia_v2"). code_switching liga porque a aula mistura português e
-      // inglês na mesma fala.
+      //
+      // "gladia_v2_streaming" (usado antes aqui) é o provedor de tempo real
+      // (ao vivo, entregue via recording_config.realtime_endpoints) - ele
+      // NÃO deixa um transcript recuperável depois que a call termina, então
+      // bot.recordings[].media_shortcuts.transcript nunca aparecia (o bot
+      // terminava normal, "done", mas sem transcript nenhum pra buscar -
+      // via reprocessar ou webhook, tanto faz). O provedor certo pra buscar
+      // depois é o assíncrono: "gladia_v2_async_transcription" (confirmado
+      // na doc da Recall.ai, docs.recall.ai/docs/multilingual-transcription).
+      // code_switching liga porque a aula mistura português e inglês na
+      // mesma fala.
       //
       // video_mixed_mp4: null é o jeito documentado (API 1.11, caso de uso
       // "Transcribing without recording") de o bot NÃO gravar vídeo da
@@ -60,7 +67,7 @@ export async function createBot(meetingUrl: string, webhookUrl: string, joinAt?:
         video_mixed_mp4: null,
         transcript: {
           provider: {
-            gladia_v2_streaming: {
+            gladia_v2_async_transcription: {
               language_config: {
                 code_switching: true,
               },
