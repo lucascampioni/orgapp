@@ -41,16 +41,27 @@ export async function POST(request: NextRequest) {
   }
 
   let transcriptId: string | null;
+  let statusCode: string | null;
+  let statusMessage: string | null;
   try {
-    transcriptId = await getTranscriptIdFromBot(aula.recall_bot_id);
+    ({ transcriptId, statusCode, statusMessage } = await getTranscriptIdFromBot(aula.recall_bot_id));
   } catch (err) {
     console.error("Falha ao buscar transcript_id do bot", err);
     const detail = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Falha ao buscar transcript: ${detail}` }, { status: 502 });
   }
   if (!transcriptId) {
+    // status_changes dá um motivo de verdade em vez de um "não achei" cego -
+    // ex: bot ainda gravando, call terminou mas transcrição ainda
+    // processando, ou deu erro fatal (nesse caso o motivo aparece aqui).
+    const motivo =
+      statusCode === "fatal"
+        ? `o bot teve um erro na Recall.ai${statusMessage ? `: ${statusMessage}` : ""}`
+        : statusCode
+          ? `status atual do bot na Recall.ai: "${statusCode}"${statusMessage ? ` (${statusMessage})` : ""} - a transcrição pode ainda estar processando`
+          : "não consegui ler o status do bot na Recall.ai";
     return NextResponse.json(
-      { error: "Ainda não achei um transcript pronto pra essa gravação" },
+      { error: `Ainda não achei um transcript pronto pra essa gravação (${motivo}). Tenta de novo em alguns minutos.` },
       { status: 400 },
     );
   }

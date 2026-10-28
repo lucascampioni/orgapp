@@ -124,29 +124,54 @@ export function extractTranscriptId(payload: unknown): string | null {
   return typeof transcript?.id === "string" ? transcript.id : null;
 }
 
+export type StatusBot = {
+  transcriptId: string | null;
+  /** Último código de status do bot (ex: "joining_call", "in_call_recording",
+   * "call_ended", "done", "fatal") - histórico completo em status_changes,
+   * conferido na doc da Recall.ai (docs.recall.ai/docs/bot-status-change-events).
+   * A Recall avisa pra não tratar isso como enum fechado (podem adicionar
+   * códigos novos), então aqui é só pra dar um erro mais específico pro
+   * usuário, nunca pra decisão de lógica. */
+  statusCode: string | null;
+  statusMessage: string | null;
+};
+
 /**
  * Busca o transcript_id a partir só do bot_id, pra reprocessar uma aula sem
  * depender de ter recebido o payload do webhook (a gente só guarda o
- * recall_bot_id no banco, não o transcript_id). Escrito sem acesso à doc ao
- * vivo (mesma ressalva do topo do arquivo) - o formato mais comum da
- * Recall.ai é bot.recordings[].media_shortcuts.transcript.data.id, mas essa
- * função tenta achar o id em qualquer lugar plausível da resposta.
+ * recall_bot_id no banco, não o transcript_id). O formato é
+ * bot.recordings[].media_shortcuts.transcript.data.id (confirmado na doc da
+ * Recall.ai), mas essa função tenta achar o id em qualquer lugar plausível
+ * da resposta. Também devolve o último status do bot (status_changes),
+ * pra dar um erro mais útil que "não achei" quando o transcript ainda não
+ * existe - ex: bot ainda gravando, ou deu erro fatal.
  */
-export async function getTranscriptIdFromBot(botId: string): Promise<string | null> {
+export async function getTranscriptIdFromBot(botId: string): Promise<StatusBot> {
   const res = await fetch(`${RECALL_API_BASE}/bot/${botId}/`, { headers: authHeaders() });
   if (!res.ok) {
     throw new Error(`Falha ao buscar bot no Recall.ai (${res.status}): ${await res.text()}`);
   }
 
   const bot = (await res.json()) as Record<string, unknown>;
+
+  let transcriptId: string | null = null;
   const recordings = (bot.recordings as Record<string, unknown>[] | undefined) ?? [];
   for (const recording of recordings) {
     const shortcuts = recording.media_shortcuts as Record<string, unknown> | undefined;
     const transcript = shortcuts?.transcript as Record<string, unknown> | undefined;
     const data = transcript?.data as Record<string, unknown> | undefined;
-    if (typeof data?.id === "string") return data.id;
+    if (typeof data?.id === "string") {
+      transcriptId = data.id;
+      break;
+    }
   }
-  return null;
+
+  const statusChanges = (bot.status_changes as Record<string, unknown>[] | undefined) ?? [];
+  const ultimoStatus = statusChanges[statusChanges.length - 1];
+  const statusCode = typeof ultimoStatus?.code === "string" ? ultimoStatus.code : null;
+  const statusMessage = typeof ultimoStatus?.message === "string" ? ultimoStatus.message : null;
+
+  return { transcriptId, statusCode, statusMessage };
 }
 
 export async function getTranscriptText(transcriptId: string): Promise<string> {
